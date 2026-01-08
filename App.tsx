@@ -92,7 +92,7 @@ const App: React.FC = () => {
           <div className="space-y-6">
             <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100 space-y-4">
               <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                <AlertCircle size(14} /> Passo único necessário:
+                <AlertCircle size={14} /> Passo único necessário:
               </h3>
               <ol className="text-sm text-slate-600 space-y-3 font-semibold">
                 <li className="flex gap-3 items-start"><span className="bg-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] shadow-sm shrink-0">1</span> No painel Supabase, vá em <strong>SQL Editor</strong>.</li>
