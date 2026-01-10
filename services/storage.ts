@@ -1,67 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { User, TimeRecord, Location, PunchType } from '../types';
 
-// SQL DE CORREÇÃO E ATUALIZAÇÃO (VERSÃO 2.2 - CORREÇÃO DE DELETE)
-export const SETUP_SQL = `-- SCRIPT DE REPARO (VERSÃO 2.2 - CORREÇÃO DE DELETE)
--- Rode este script no SQL Editor para liberar as permissões de exclusão.
-
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
--- 1. Garantir tabelas
-CREATE TABLE IF NOT EXISTS public.profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  email TEXT NOT NULL,
-  employee_id TEXT,
-  role TEXT DEFAULT 'employee',
-  workspace_id TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS public.locations (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  address TEXT,
-  code TEXT UNIQUE NOT NULL,
-  workspace_id TEXT NOT NULL,
-  latitude DOUBLE PRECISION,
-  longitude DOUBLE PRECISION,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS public.time_records (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  user_name TEXT,
-  employee_id TEXT,
-  workspace_id TEXT NOT NULL,
-  type TEXT,
-  timestamp BIGINT NOT NULL,
-  location_code TEXT,
-  location_name TEXT,
-  photo TEXT,
-  coords_lat DOUBLE PRECISION,
-  coords_lng DOUBLE PRECISION,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 2. RESETAR POLÍTICAS DE SEGURANÇA (RLS)
--- Isso garante que não existam regras antigas bloqueando o DELETE
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.locations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.time_records ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Allow All" ON public.profiles;
-DROP POLICY IF EXISTS "Allow All" ON public.locations;
-DROP POLICY IF EXISTS "Allow All" ON public.time_records;
-DROP POLICY IF EXISTS "Allow Delete" ON public.locations;
-
--- Cria política permissiva total para garantir que o DELETE funcione
-CREATE POLICY "Allow All" ON public.profiles FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow All" ON public.locations FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow All" ON public.time_records FOR ALL USING (true) WITH CHECK (true);
-`;
-
 const supabaseUrl = 'https://ytwmspnmjlflzsxlpftd.supabase.co';
 const supabaseKey = 'sb_publishable_mzaDAXN1gLVl3Di5iK1_cQ_7FJhxjOI';
 
@@ -146,7 +85,6 @@ export const StorageService = {
     };
     if (loc.address) payload.address = loc.address;
     
-    // Verificação estrita de número para garantir que 0 é aceito, mas null/undefined não
     if (typeof loc.latitude === 'number') payload.latitude = loc.latitude;
     if (typeof loc.longitude === 'number') payload.longitude = loc.longitude;
 
@@ -162,24 +100,9 @@ export const StorageService = {
   },
 
   deleteLocation: async (id: string) => {
-    // AQUI ESTÁ A CORREÇÃO: count: 'exact' garante que sabemos se algo foi deletado
     const { error, count } = await supabase.from('locations').delete({ count: 'exact' }).eq('id', id);
-    
-    if (error) {
-        console.error("Erro Supabase Delete:", error);
-        throw error;
-    }
-
-    // Se count for 0 ou null, significa que nada foi apagado (provavelmente problema de permissão RLS)
-    // Lançamos erro para a interface saber e desfazer a remoção visual
-    if (count === 0 || count === null) {
-       throw new Error("DELETE_FAILED_NO_ROWS");
-    }
-  },
-
-  deleteLocationByCode: async (code: string) => {
-    const { error } = await supabase.from('locations').delete().eq('code', code);
     if (error) throw error;
+    if (count === 0 || count === null) throw new Error("DELETE_FAILED_NO_ROWS");
   },
 
   getRecords: async (workspaceId: string, userId?: string): Promise<TimeRecord[]> => {
@@ -198,7 +121,7 @@ export const StorageService = {
       type: r.type,
       timestamp: Number(r.timestamp),
       locationCode: r.location_code,
-      locationName: r.location_name, // CORRIGIDO: de location_name para locationName
+      locationName: r.location_name,
       photo: r.photo,
       coords: (r.coords_lat && r.coords_lng) ? { latitude: r.coords_lat, longitude: r.coords_lng } : undefined
     })) as TimeRecord[];
@@ -226,12 +149,9 @@ export const StorageService = {
 
     if (error) {
       if (isTableMissingError(error)) throw new Error("DB_NOT_READY");
-      
       if (error.code === '42703' || error.message?.includes('coords')) {
-          console.warn("Banco desatualizado. Salvando ponto sem GPS.");
           delete payload.coords_lat;
           delete payload.coords_lng;
-          
           const { error: retryError } = await supabase.from('time_records').insert(payload);
           if (retryError) throw retryError;
           return;
