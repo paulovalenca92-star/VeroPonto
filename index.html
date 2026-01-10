@@ -2,7 +2,10 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="theme-color" content="#0f172a" />
     <title>VeroPonto | Gestão de Jornada</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -12,10 +15,16 @@
         background-color: #f8fafc;
         color: #1e293b;
         -webkit-tap-highlight-color: transparent;
+        overscroll-behavior-y: none; /* Previne efeito elástico no mobile */
       }
-      ::-webkit-scrollbar { width: 4px; }
+      /* Scrollbar personalizada para desktop */
+      ::-webkit-scrollbar { width: 6px; height: 6px; }
       ::-webkit-scrollbar-track { background: transparent; }
       ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+      ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+      
+      /* Utilitários para mobile */
+      .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
     </style>
   <script type="importmap">
 {

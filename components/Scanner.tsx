@@ -11,7 +11,6 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onClose }) => {
   const [status, setStatus] = useState<'initializing' | 'scanning' | 'error'>('initializing');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
-  // ID único para garantir que o DOM seja fresco a cada montagem
   const elementId = useRef(`qr-reader-${Math.random().toString(36).substr(2, 9)}`).current;
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const isMountedRef = useRef(true);
@@ -21,19 +20,14 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onClose }) => {
     let scannerInstance: Html5Qrcode | null = null;
 
     const startScanner = async () => {
-      // Delay para garantir que o modal abriu e o DOM existe
       await new Promise(r => setTimeout(r, 300));
       
       if (!isMountedRef.current) return;
 
       const element = document.getElementById(elementId);
-      if (!element) {
-        console.error("Scanner element not found");
-        return;
-      }
+      if (!element) return;
 
       try {
-        // Limpa qualquer instância residual
         try {
             if (scannerRef.current) {
                 await scannerRef.current.stop();
@@ -58,8 +52,6 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onClose }) => {
           },
           (decodedText) => {
             if (isMountedRef.current) {
-               // Callback de sucesso
-               // Pausa imediatamente para evitar múltiplas leituras
                if (scannerInstance?.isScanning) {
                    scannerInstance.pause(true);
                }
@@ -72,7 +64,6 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onClose }) => {
         if (isMountedRef.current) {
             setStatus('scanning');
         } else {
-            // Se desmontou durante o start, aborta
             cleanup(scannerInstance);
         }
 
@@ -93,33 +84,20 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onClose }) => {
 
     startScanner();
 
-    // Função de limpeza robusta
     const cleanup = async (instance: Html5Qrcode | null) => {
         if (!instance) return;
-        
         try {
-            // Verifica estado interno antes de tentar parar
-            // @ts-ignore - Acessando propriedade privada para verificação de segurança extra se necessário, ou confiando no try/catch
-            if (instance.isScanning) {
-                await instance.stop();
-            }
-            // Só limpa o DOM após o stop ter sucesso
+            // @ts-ignore
+            if (instance.isScanning) await instance.stop();
             instance.clear();
         } catch (err: any) {
-            console.warn("Scanner Cleanup Warning:", err);
-            // Se falhar o stop, ainda tentamos limpar o DOM se o elemento existir
-            try {
-                if (document.getElementById(elementId)) {
-                    instance.clear();
-                }
-            } catch (e) { /* ignore final clear error */ }
+            try { if (document.getElementById(elementId)) instance.clear(); } catch (e) {}
         }
     };
 
     return () => {
       isMountedRef.current = false;
       if (scannerRef.current) {
-          // Executa limpeza desconectada do ciclo de renderização para evitar travamento
           const instance = scannerRef.current;
           scannerRef.current = null;
           cleanup(instance);
@@ -128,7 +106,7 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onClose }) => {
   }, [elementId, onScan]);
 
   return (
-    <div className="fixed inset-0 z-[300] bg-slate-900/95 backdrop-blur-sm flex flex-col items-center justify-center p-6 animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-[2000] bg-slate-900/95 backdrop-blur-sm flex flex-col items-center justify-center p-6 animate-in fade-in duration-300">
       <div className="w-full max-w-sm bg-white rounded-[3rem] overflow-hidden shadow-2xl relative">
         <div className="p-6 bg-indigo-600 text-white flex justify-between items-center">
           <div className="flex items-center gap-2">
@@ -142,10 +120,8 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onClose }) => {
         
         <div className="p-8 bg-black relative min-h-[350px] flex flex-col">
           <div className="w-full flex-1 overflow-hidden rounded-[2rem] border-4 border-white/10 relative bg-slate-900 min-h-[250px]">
-             {/* Container do Vídeo */}
              <div id={elementId} className="w-full h-full bg-slate-900 rounded-[1.5rem] overflow-hidden"></div>
 
-             {/* Overlays de Estado */}
              {status === 'initializing' && (
                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white z-10 bg-slate-900 pointer-events-none">
                     <Loader2 size={32} className="animate-spin text-indigo-400" />

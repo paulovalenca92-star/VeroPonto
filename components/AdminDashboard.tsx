@@ -22,25 +22,17 @@ import {
   Loader2,
   Navigation,
   Sparkles,
-  Info,
-  Pencil,
-  UserCog,
-  Ban,
-  Fingerprint,
-  FileCheck,
-  Share2,
-  Map as MapIcon,
-  ArrowDownCircle,
-  ArrowUpCircle,
-  ShieldCheck,
-  Smartphone,
   Database,
-  Globe,
-  Crosshair,
-  AlertTriangle,
+  ArrowUpRight,
+  TrendingUp,
+  AlertOctagon,
   ImageDown,
+  UserCog,
+  Shield,
+  Mail,
+  Hash,
   ChevronRight,
-  History
+  MoreHorizontal
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 
@@ -53,6 +45,7 @@ const AdminDashboard: React.FC = () => {
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [viewingQR, setViewingQR] = useState<Location | null>(null);
   const [locationToDelete, setLocationToDelete] = useState<Location | null>(null);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [copied, setCopied] = useState(false);
   
   const [users, setUsers] = useState<User[]>([]);
@@ -76,6 +69,14 @@ const AdminDashboard: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (!showAddLoc || !newLoc.address || newLoc.address.length < 5) return;
+    const timer = setTimeout(() => {
+      handleSearchAddressWithAI(true);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [newLoc.address, showAddLoc]);
 
   const loadData = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -103,6 +104,95 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const stats = useMemo(() => {
+    const today = new Date().toDateString();
+    const recordsToday = records.filter(r => new Date(r.timestamp).toDateString() === today);
+    const uniquePeopleToday = new Set(recordsToday.map(r => r.userId)).size;
+    const chartData = Array.from({length: 12}, (_, i) => {
+        const hour = new Date().getHours() - (11 - i);
+        const count = recordsToday.filter(r => new Date(r.timestamp).getHours() === hour).length;
+        return { hour, count };
+    });
+    const maxCount = Math.max(...chartData.map(d => d.count), 1);
+
+    return {
+        todayTotal: recordsToday.length,
+        uniquePeople: uniquePeopleToday,
+        locations: locations.length,
+        chartData,
+        maxCount,
+        totalUsers: users.length,
+        admins: users.filter(u => u.role === 'admin').length,
+        employees: users.filter(u => u.role === 'employee').length
+    };
+  }, [records, locations, users]);
+
+  const filteredRecords = useMemo(() => {
+    return records.filter(r => 
+      r.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      r.employeeId.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [records, searchTerm]);
+
+  const filteredUsers = useMemo(() => {
+    return users.filter(u => 
+      u.name.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+      u.employeeId.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+      u.email.toLowerCase().includes(userSearchTerm.toLowerCase())
+    );
+  }, [users, userSearchTerm]);
+
+  const handleSearchAddressWithAI = async (isAuto = false) => {
+    if (!newLoc.address.trim() || !process.env.API_KEY) return;
+    setIsSearchingAddress(true);
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const prompt = `Analise o endereço: "${newLoc.address}". Retorne um JSON estritamente: {"formatted_address": "...", "latitude": 0.0, "longitude": 0.0}`;
+      const response = await ai.models.generateContent({ model: 'gemini-3-flash-preview', contents: prompt });
+      const text = response.text?.replace(/```json|```/g, '').trim();
+      if (text) {
+        const data = JSON.parse(text);
+        if (typeof data.latitude === 'number') {
+          setNewLoc(prev => ({ 
+            ...prev, 
+            address: isAuto ? prev.address : (data.formatted_address || prev.address),
+            lat: data.latitude,
+            lng: data.longitude
+          }));
+        }
+      }
+    } catch (err) { console.error(err); } finally { setIsSearchingAddress(false); }
+  };
+
+  const handleAddLoc = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adminProfile || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await StorageService.saveLocation({
+        name: newLoc.name.trim(),
+        address: newLoc.address.trim(),
+        code: newLoc.code.trim() || `QR-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
+        workspaceId: adminProfile.workspaceId,
+        latitude: newLoc.lat,
+        longitude: newLoc.lng
+      });
+      setShowAddLoc(false);
+      setNewLoc({ name: '', address: '', code: '' });
+      await loadData();
+    } catch (err) { alert("Erro ao salvar."); } finally { setIsSubmitting(false); }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+    setIsDeleting(true);
+    try {
+      await StorageService.deleteUser(userToDelete.id);
+      setUserToDelete(null);
+      await loadData();
+    } catch (err) { alert("Erro ao remover colaborador."); } finally { setIsDeleting(false); }
+  };
+
   const svgToBase64 = (svgString: string) => {
     return `data:image/svg+xml;base64,${window.btoa(unescape(encodeURIComponent(svgString)))}`;
   };
@@ -111,23 +201,12 @@ const AdminDashboard: React.FC = () => {
     if (!viewingQR) return;
     const svgElement = document.querySelector('.qr-container svg');
     if (!svgElement) return;
-
     try {
       const svgData = new XMLSerializer().serializeToString(svgElement);
       const svgBase64 = svgToBase64(svgData);
       const printWindow = window.open('', '_blank');
       if (!printWindow) return;
-      printWindow.document.write(`
-        <html><body style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;">
-          <div style="border:2px solid #eee;padding:40px;border-radius:20px;text-align:center;">
-            <h1 style="color:#6366f1;font-size:12px;letter-spacing:4px;">PLACA DE PONTO</h1>
-            <img src="${svgBase64}" style="width:250px;margin:20px 0;"/>
-            <h2 style="margin:0;">${viewingQR.name}</h2>
-            <p style="color:#94a3b8;font-size:10px;">${viewingQR.code}</p>
-          </div>
-          <script>window.onload=()=>{setTimeout(()=>{window.print();window.close();},500);};</script>
-        </body></html>
-      `);
+      printWindow.document.write(`<html><body style="display:flex;justify-content:center;align-items:center;height:100vh;"><div style="text-align:center;"><img src="${svgBase64}" style="width:300px;"/><h1>${viewingQR.name}</h1><p>${viewingQR.code}</p></div><script>window.onload=()=>{window.print();window.close();}</script></body></html>`);
       printWindow.document.close();
     } catch (e) { console.error(e); }
   };
@@ -140,112 +219,148 @@ const AdminDashboard: React.FC = () => {
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
     const img = new Image();
-    canvas.width = 500; canvas.height = 650;
+    const size = 600; 
+    canvas.width = size;
+    canvas.height = size + 150;
     img.onload = () => {
-      if (!ctx) return;
-      ctx.fillStyle = "white"; ctx.fillRect(0, 0, 500, 650);
-      ctx.drawImage(img, 100, 100, 300, 300);
-      ctx.textAlign = "center"; ctx.fillStyle = "#1e293b"; ctx.font = "bold 24px sans-serif";
-      ctx.fillText(viewingQR.name, 250, 480);
-      const link = document.createElement("a"); link.href = canvas.toDataURL(); link.download = "qrcode.png"; link.click();
+        if (!ctx) return;
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, (size - 300) / 2, 80, 300, 300);
+        ctx.font = "bold 32px sans-serif";
+        ctx.fillStyle = "#1e293b";
+        ctx.textAlign = "center";
+        ctx.fillText(viewingQR.name, 300, 480);
+        const link = document.createElement("a");
+        link.href = canvas.toDataURL("image/png");
+        link.download = `ponto-${viewingQR.code}.png`;
+        link.click();
     };
     img.src = svgToBase64(svgData);
   };
 
-  const filteredRecords = useMemo(() => {
-    return records.filter(r => 
-      r.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.employeeId.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [records, searchTerm]);
-
-  const executeDeleteLocation = async () => {
-    if (!locationToDelete) return;
-    setIsDeleting(true);
-    try {
-      await StorageService.deleteLocation(locationToDelete.id);
-      setLocationToDelete(null);
-      await loadData();
-    } catch (err) { alert("Erro ao excluir."); }
-    finally { setIsDeleting(false); }
-  };
-
-  const getRelativeTime = (timestamp: number) => {
-    const diff = Date.now() - timestamp;
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    if (hours < 1) return 'agora mesmo';
-    if (hours === 1) return 'há 1 hora';
-    return `há ${hours} horas`;
-  };
-
   return (
     <div className="space-y-8 animate-in fade-in duration-500 max-w-7xl mx-auto pb-20">
-      {/* Banner Superior */}
-      <section className="bg-slate-900 rounded-[2.5rem] p-8 text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl border border-white/5">
-        <div className="space-y-2 text-center md:text-left">
-          <h2 className="text-3xl font-black tracking-tight">VeroPonto <span className="text-indigo-500">Gestão</span></h2>
-          <p className="text-slate-400 text-sm font-medium">Controle de unidades e registros em tempo real.</p>
+      
+      {/* Header com KPIs */}
+      <section className="bg-slate-900 rounded-[2.5rem] p-8 text-white shadow-2xl border border-white/5 relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-32 bg-indigo-600/20 blur-[100px] rounded-full"></div>
+        
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative z-10 mb-10">
+            <div>
+                 <h2 className="text-3xl font-black tracking-tight mb-1">Painel <span className="text-indigo-400">Gestor</span></h2>
+                 <p className="text-slate-400 text-xs font-medium">Visão geral da operação em tempo real.</p>
+            </div>
+            <div className="flex items-center gap-3">
+                 <div className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-xl flex items-center gap-2 border border-white/10">
+                    <Building2 size={14} className="text-indigo-400" />
+                    <span className="text-xs font-bold tracking-wider">{adminProfile?.workspaceId}</span>
+                    <button onClick={copyWorkspaceId} className="hover:text-white text-white/50 transition"><Copy size={12} /></button>
+                 </div>
+                 <button onClick={() => setShowSql(true)} className="p-2 bg-white/10 hover:bg-white/20 rounded-xl transition border border-white/10"><Database size={16} /></button>
+            </div>
         </div>
-        <div className="bg-white/5 backdrop-blur-md p-6 rounded-[2rem] border border-white/10 flex flex-col items-center gap-3">
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60 text-slate-300">Workspace ID</p>
-          <div className="flex items-center gap-3">
-            <span className="text-3xl font-black tracking-tighter tabular-nums">{adminProfile?.workspaceId}</span>
-            <button onClick={copyWorkspaceId} className={`p-3 rounded-xl transition-all ${copied ? 'bg-emerald-500' : 'bg-white/10 hover:bg-white/20'}`}>
-              {copied ? <Check size={18} /> : <Copy size={18} />}
-            </button>
-          </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-white/5 backdrop-blur-sm p-5 rounded-3xl border border-white/5 flex flex-col justify-between h-32 hover:bg-white/10 transition">
+                <div className="flex justify-between items-start">
+                    <div className="p-2 bg-indigo-500/20 rounded-xl text-indigo-300"><Clock size={20} /></div>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg">+12%</span>
+                </div>
+                <div>
+                    <h3 className="text-3xl font-black">{stats.todayTotal}</h3>
+                    <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Registros Hoje</p>
+                </div>
+            </div>
+
+            <div className="bg-white/5 backdrop-blur-sm p-5 rounded-3xl border border-white/5 flex flex-col justify-between h-32 hover:bg-white/10 transition">
+                <div className="flex justify-between items-start">
+                    <div className="p-2 bg-purple-500/20 rounded-xl text-purple-300"><Users size={20} /></div>
+                </div>
+                <div>
+                    <h3 className="text-3xl font-black">{stats.uniquePeople} <span className="text-sm text-slate-500 font-medium">/ {users.length}</span></h3>
+                    <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Presentes Agora</p>
+                </div>
+            </div>
+
+            <div className="col-span-1 md:col-span-2 bg-white/5 backdrop-blur-sm p-5 rounded-3xl border border-white/5 flex flex-col justify-between h-32 relative overflow-hidden">
+                <div className="absolute inset-0 flex items-end justify-between px-4 pb-0 opacity-30">
+                    {stats.chartData.map((d, i) => (
+                        <div key={i} className="w-full mx-1 bg-indigo-400 rounded-t-sm transition-all duration-500" style={{ height: `${(d.count / stats.maxCount) * 80}%` }}></div>
+                    ))}
+                </div>
+                <div className="relative z-10">
+                    <div className="flex items-center gap-2 mb-1">
+                        <TrendingUp size={16} className="text-indigo-400" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-indigo-200">Atividade (12h)</span>
+                    </div>
+                </div>
+            </div>
         </div>
       </section>
 
-      {/* Abas */}
       <nav className="flex bg-white p-2 rounded-3xl shadow-sm border border-slate-100 overflow-x-auto whitespace-nowrap scrollbar-hide">
-        <button onClick={() => setActiveTab('records')} className={`flex-1 min-w-[120px] py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${activeTab === 'records' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}>Registros</button>
-        <button onClick={() => setActiveTab('users')} className={`flex-1 min-w-[120px] py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${activeTab === 'users' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}>Equipe</button>
-        <button onClick={() => setActiveTab('locations')} className={`flex-1 min-w-[120px] py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${activeTab === 'locations' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}>Unidades</button>
+        {['records', 'users', 'locations'].map(tab => (
+            <button 
+                key={tab}
+                onClick={() => setActiveTab(tab as any)} 
+                className={`flex-1 min-w-[120px] py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-slate-400 hover:bg-slate-50'}`}
+            >
+                {tab === 'records' ? 'Registros' : tab === 'users' ? 'Equipe' : 'Unidades'}
+            </button>
+        ))}
       </nav>
 
-      {/* Área de Conteúdo */}
       <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 min-h-[400px]">
+        
+        {/* TAB: REGISTROS */}
         {activeTab === 'records' && (
           <div className="overflow-x-auto">
              <div className="p-4 border-b border-slate-50 flex flex-col md:flex-row justify-between items-center gap-4">
                 <div className="relative max-w-sm w-full">
-                   <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
-                   <input type="text" placeholder="Buscar registro..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-slate-50 rounded-2xl text-xs font-bold text-slate-700 outline-none" />
+                   <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
+                   <input type="text" placeholder="Buscar colaborador..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-slate-50 rounded-xl text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-100 transition-all" />
                 </div>
-                <button onClick={() => StorageService.exportToCSV(filteredRecords)} className="w-full md:w-auto px-6 py-3 bg-white border border-slate-200 text-slate-600 hover:bg-indigo-50 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2">
-                   <Download size={16} /> Baixar Relatório (CSV)
+                <button onClick={() => StorageService.exportToCSV(filteredRecords)} className="px-5 py-3 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 transition-all">
+                   <Download size={14} /> CSV
                 </button>
              </div>
             <table className="w-full text-left">
               <thead>
                 <tr className="bg-slate-50/50 border-b border-slate-100">
                   <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Colaborador</th>
-                  <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Tipo</th>
+                  <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
                   <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Horário</th>
                   <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Local</th>
-                  <th className="px-6 py-5 text-right px-10"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {filteredRecords.map(record => (
                   <tr key={record.id} className="hover:bg-slate-50/50 transition-colors group cursor-pointer" onClick={() => setSelectedRecord(record)}>
-                    <td className="px-6 py-5">
+                    <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 font-black text-xs uppercase">{record.userName.substring(0, 2)}</div>
+                        <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-500 font-bold text-xs">{record.userName.substring(0, 2)}</div>
                         <div>
-                          <p className="font-bold text-slate-800 text-sm">{record.userName}</p>
-                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{record.employeeId}</p>
+                          <p className="font-bold text-slate-800 text-xs">{record.userName}</p>
+                          <p className="text-[9px] font-medium text-slate-400">{record.employeeId}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-5 text-[10px] font-black uppercase tracking-widest">
-                       <span className={record.type === 'entry' ? 'text-indigo-600' : 'text-slate-400'}>{record.type === 'entry' ? 'Entrada' : 'Saída'}</span>
+                    <td className="px-6 py-4">
+                        <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wide border ${
+                            record.type === 'entry' ? 'bg-indigo-50 text-indigo-600 border-indigo-100' : 'bg-slate-100 text-slate-500 border-slate-200'
+                        }`}>
+                           {record.type === 'entry' ? 'Entrada' : 'Saída'}
+                        </span>
                     </td>
-                    <td className="px-6 py-5 font-bold text-slate-800 text-xs">{new Date(record.timestamp).toLocaleString()}</td>
-                    <td className="px-6 py-5 text-slate-500 font-semibold text-xs truncate max-w-[200px]">{record.locationName}</td>
-                    <td className="px-6 py-5 text-right px-10">
-                      <button className="p-2 text-slate-300 hover:text-indigo-600 transition-all opacity-0 group-hover:opacity-100"><Eye size={18} /></button>
+                    <td className="px-6 py-4 font-bold text-slate-700 text-xs tabular-nums">
+                        {new Date(record.timestamp).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                    <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                            <span className="text-slate-500 font-medium text-xs truncate max-w-[150px]">{record.locationName?.split('(')[0] || 'Local'}</span>
+                            {record.locationName?.includes('Fora') && <AlertOctagon size={14} className="text-amber-500" title="Registro fora do perímetro" />}
+                        </div>
                     </td>
                   </tr>
                 ))}
@@ -254,28 +369,106 @@ const AdminDashboard: React.FC = () => {
           </div>
         )}
 
+        {/* TAB: EQUIPE - AGORA PROFISSIONAL */}
+        {activeTab === 'users' && (
+          <div className="flex flex-col">
+             <div className="p-6 border-b border-slate-50 flex flex-col md:flex-row justify-between items-center gap-6">
+                <div>
+                    <h3 className="text-xl font-black text-slate-800">Equipe Corporativa</h3>
+                    <p className="text-slate-400 text-xs font-medium">Gestão de acessos e cargos da unidade.</p>
+                </div>
+                <div className="relative max-w-sm w-full">
+                   <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
+                   <input type="text" placeholder="Nome, e-mail ou matrícula..." value={userSearchTerm} onChange={(e) => setUserSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-slate-50 rounded-xl text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-100 transition-all border border-transparent focus:border-indigo-200" />
+                </div>
+             </div>
+
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
+                {filteredUsers.map(user => (
+                    <div key={user.id} className="bg-white border border-slate-100 rounded-[2.5rem] p-6 shadow-sm hover:shadow-xl hover:scale-[1.02] transition-all relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-8 bg-slate-50 rounded-bl-[4rem] opacity-40"></div>
+                        
+                        <div className="flex justify-between items-start mb-6 relative z-10">
+                            <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 border border-indigo-100 shadow-sm overflow-hidden group-hover:scale-110 transition-transform">
+                                <UserIcon size={28} />
+                            </div>
+                            <div className="flex flex-col items-end gap-2">
+                                <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border ${
+                                    user.role === 'admin' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                }`}>
+                                    {user.role === 'admin' ? 'Gestor' : 'Colaborador'}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4 relative z-10">
+                            <div>
+                                <h4 className="font-black text-slate-800 text-lg leading-tight group-hover:text-indigo-600 transition-colors">{user.name}</h4>
+                                <div className="flex items-center gap-2 text-slate-400 mt-1">
+                                    <Mail size={12} />
+                                    <p className="text-[10px] font-bold truncate">{user.email}</p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-4 border-t border-slate-50">
+                                <div className="flex flex-col">
+                                    <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Matrícula</span>
+                                    <span className="text-xs font-black text-slate-600">{user.employeeId}</span>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button 
+                                        onClick={() => setUserToDelete(user)}
+                                        className="p-2 bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-sm"
+                                        title="Remover Colaborador"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+
+                {filteredUsers.length === 0 && (
+                    <div className="col-span-full py-20 text-center space-y-4 opacity-40">
+                        <Search size={48} className="mx-auto text-slate-300" />
+                        <p className="text-xs font-black uppercase tracking-widest">Nenhum colaborador encontrado</p>
+                    </div>
+                )}
+             </div>
+          </div>
+        )}
+
+        {/* TAB: UNIDADES */}
         {activeTab === 'locations' && (
           <div className="p-8 space-y-8">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="flex justify-between items-center">
               <div>
-                <h3 className="text-2xl font-black text-slate-800 tracking-tight">Unidades Ativas</h3>
-                <p className="text-slate-400 text-xs font-semibold">Locais autorizados.</p>
+                <h3 className="text-xl font-black text-slate-800">Unidades</h3>
+                <p className="text-slate-400 text-xs font-medium">Gestão de locais físicos para validação de ponto.</p>
               </div>
-              <button onClick={() => setShowAddLoc(true)} className="w-full md:w-auto px-8 py-5 bg-indigo-600 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-indigo-700 shadow-xl">
-                <Plus size={18} /> Nova Unidade
+              <button onClick={() => setShowAddLoc(true)} className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all">
+                <Plus size={14} /> Nova Unidade
               </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {locations.map(loc => (
-                <div key={loc.id} className="bg-slate-50 border border-slate-100 rounded-[2.5rem] p-8 flex flex-col relative group hover:shadow-xl transition-all">
-                  <div className="absolute top-4 right-4 flex gap-1 z-30">
-                    <button onClick={() => setViewingQR(loc)} className="p-3 bg-white text-indigo-500 rounded-2xl shadow-sm hover:bg-indigo-50 border border-slate-100"><QrCode size={18} /></button>
-                    <button onClick={() => setLocationToDelete(loc)} className="p-3 bg-white text-slate-300 rounded-2xl shadow-sm hover:text-red-500 border border-slate-100"><Trash2 size={18} /></button>
-                  </div>
-                  <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-indigo-600 mb-6 shadow-sm border border-slate-100"><MapPin size={28} /></div>
-                  <h4 className="font-black text-slate-800 text-lg">{loc.name}</h4>
-                  <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">{loc.code}</p>
-                  <p className="text-xs text-slate-500 font-medium mt-2 leading-relaxed italic">{loc.address || 'Sem endereço'}</p>
+                <div key={loc.id} className="bg-white border border-slate-100 rounded-[2.5rem] p-6 shadow-sm hover:shadow-xl transition-all group relative overflow-hidden">
+                   <div className="absolute top-0 right-0 p-10 bg-gradient-to-bl from-slate-100 to-transparent rounded-bl-[4rem] opacity-50"></div>
+                   <div className="relative z-10">
+                      <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 mb-4 border border-indigo-100">
+                          <MapPin size={20} />
+                      </div>
+                      <h4 className="font-black text-slate-800 text-lg leading-tight mb-1">{loc.name}</h4>
+                      <p className="text-xs text-slate-500 line-clamp-2 h-10 mb-4">{loc.address || 'Endereço não cadastrado'}</p>
+                      
+                      <div className="flex gap-2 mt-4 pt-4 border-t border-slate-50">
+                        <button onClick={() => setViewingQR(loc)} className="flex-1 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-black uppercase flex items-center justify-center gap-2 hover:bg-indigo-100 transition">
+                            <QrCode size={12} /> QR Code
+                        </button>
+                        <button onClick={() => setLocationToDelete(loc)} className="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition"><Trash2 size={14} /></button>
+                      </div>
+                   </div>
                 </div>
               ))}
             </div>
@@ -283,184 +476,131 @@ const AdminDashboard: React.FC = () => {
         )}
       </div>
 
-      {/* MODAL DE DETALHES DO REGISTRO (COMPROVANTE) */}
-      {selectedRecord && (
-        <div className="fixed inset-0 z-[500] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
-            <div className="bg-[#18181b] rounded-[3rem] w-full max-w-[420px] overflow-hidden relative border border-white/5 shadow-2xl flex flex-col max-h-[90vh]">
-                
-                {/* Cabeçalho */}
-                <div className="p-8 pb-6">
-                    <div className="flex justify-between items-center mb-6">
-                         <div className="flex items-center gap-2">
-                             <Fingerprint size={16} className="text-indigo-400" />
-                             <span className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.2em]">Comprovante de Registro</span>
-                         </div>
-                         <button onClick={() => setSelectedRecord(null)} className="p-2 bg-white/5 rounded-full hover:bg-white/10 text-gray-400 transition">
-                            <X size={20} />
-                        </button>
-                    </div>
+      {/* MODAL: EXCLUIR USUÁRIO */}
+      {userToDelete && (
+          <div className="fixed inset-0 z-[2000] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in">
+              <div className="bg-white rounded-[2.5rem] p-8 max-w-sm w-full shadow-2xl space-y-6">
+                  <div className="w-16 h-16 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mx-auto border border-red-100">
+                      <AlertOctagon size={32} />
+                  </div>
+                  <div className="text-center space-y-2">
+                      <h3 className="text-xl font-black text-slate-800">Remover Colaborador?</h3>
+                      <p className="text-slate-400 text-xs font-medium leading-relaxed">
+                          Você está prestes a remover <strong>{userToDelete.name}</strong> da empresa. Esta ação não pode ser desfeita.
+                      </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                      <button onClick={() => setUserToDelete(null)} className="py-4 bg-slate-50 text-slate-500 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-100">Cancelar</button>
+                      <button 
+                        onClick={handleDeleteUser} 
+                        disabled={isDeleting}
+                        className="py-4 bg-red-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                          {isDeleting ? <Loader2 size={12} className="animate-spin" /> : 'Confirmar'}
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
 
-                    <div className="flex items-start gap-5">
-                        <div className={`w-16 h-16 rounded-3xl flex items-center justify-center shrink-0 shadow-lg ${
-                            selectedRecord.type === 'entry' ? 'bg-[#ccff00] text-black' : 'bg-[#ff4400] text-white'
-                        }`}>
-                            {selectedRecord.type === 'entry' ? <ArrowDownCircle size={32} /> : <ArrowUpCircle size={32} />}
-                        </div>
-                        <div>
-                            <h2 className="text-white font-black text-2xl leading-tight">
-                                {selectedRecord.type === 'entry' ? 'Entrada' : 'Saída'}
-                            </h2>
-                            <p className="text-gray-400 text-xs mt-1 font-bold">
-                                {new Date(selectedRecord.timestamp).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})} • {new Date(selectedRecord.timestamp).toLocaleDateString('pt-BR')}
-                            </p>
-                            <p className="text-indigo-400/60 text-[10px] mt-1 font-black uppercase tracking-widest">
-                                {getRelativeTime(selectedRecord.timestamp)}
-                            </p>
-                        </div>
-                    </div>
+      {/* Visualizador de QR Code */}
+      {viewingQR && (
+        <div className="fixed inset-0 z-[2000] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in">
+          <div className="max-w-sm w-full bg-white rounded-[3rem] p-8 shadow-2xl text-center space-y-6 relative">
+             <button onClick={() => setViewingQR(null)} className="absolute top-6 right-6 p-2 bg-slate-50 rounded-full hover:bg-slate-100"><X size={20} /></button>
+             <div className="pt-4">
+                <h4 className="text-2xl font-black text-slate-800">{viewingQR.name}</h4>
+                <p className="text-xs font-bold text-indigo-500 uppercase tracking-widest mt-1">Código: {viewingQR.code}</p>
+             </div>
+             <div className="bg-white p-4 rounded-xl shadow-inner border border-slate-100 inline-block qr-container">
+                <QRCodeSVG value={viewingQR.code} size={200} level="H" />
+             </div>
+             <div className="grid grid-cols-2 gap-3">
+                 <button onClick={handlePrintQRCode} className="py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-indigo-700">
+                    <Printer size={16} /> Imprimir
+                 </button>
+                 <button onClick={handleDownloadImage} className="py-4 bg-slate-100 text-slate-600 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-200">
+                    <ImageDown size={16} /> Salvar
+                 </button>
+             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Adicionar Unidade */}
+      {showAddLoc && (
+        <div className="fixed inset-0 z-[2000] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+            <div className="bg-white rounded-[2.5rem] p-8 max-w-md w-full shadow-2xl space-y-6">
+                <div className="flex justify-between items-center">
+                    <h3 className="text-xl font-black text-slate-800">Nova Unidade</h3>
+                    <button onClick={() => setShowAddLoc(false)}><X size={24} className="text-slate-400" /></button>
                 </div>
-
-                <div className="h-px bg-white/5 w-full"></div>
-
-                {/* Conteúdo com Scroll */}
-                <div className="overflow-y-auto p-8 space-y-8 custom-scrollbar">
-                    
-                    <div className="space-y-6">
-                        <div className="grid grid-cols-2 gap-y-6 gap-x-4">
-                            <div className="col-span-2">
-                                <p className="text-white font-black text-[10px] uppercase tracking-widest opacity-40 mb-2">Colaborador</p>
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white font-bold text-xs">{selectedRecord.userName.charAt(0)}</div>
-                                    <p className="text-white font-bold text-sm truncate">{selectedRecord.userName}</p>
-                                </div>
-                            </div>
-
-                            <div>
-                                <p className="text-white font-black text-[10px] uppercase tracking-widest opacity-40 mb-1">Matrícula</p>
-                                <p className="text-gray-300 text-xs font-bold">{selectedRecord.employeeId}</p>
-                            </div>
-                            <div>
-                                <p className="text-white font-black text-[10px] uppercase tracking-widest opacity-40 mb-1">Localização</p>
-                                <p className="text-gray-300 text-xs font-bold truncate">{selectedRecord.locationName}</p>
-                            </div>
-
-                            <div className="col-span-2">
-                                <p className="text-white font-black text-[10px] uppercase tracking-widest opacity-40 mb-2">Protocolo de Segurança (ID)</p>
-                                <div className="p-3 bg-white/5 rounded-xl flex items-center justify-between group">
-                                    <code className="text-indigo-300 text-[10px] font-mono break-all leading-tight pr-4">
-                                        {selectedRecord.id}
-                                    </code>
-                                    <button onClick={() => {navigator.clipboard.writeText(selectedRecord.id); alert('ID Copiado!');}} className="text-white/20 hover:text-white transition">
-                                        <Copy size={14} />
-                                    </button>
-                                </div>
-                            </div>
-
-                            {selectedRecord.photo && (
-                                <div className="col-span-2">
-                                    <p className="text-white font-black text-[10px] uppercase tracking-widest opacity-40 mb-3">Evidência Biométrica</p>
-                                    <div className="relative group">
-                                        <img 
-                                            src={selectedRecord.photo} 
-                                            className="w-full aspect-square object-cover rounded-[2rem] border-2 border-white/5 shadow-2xl transition-transform hover:scale-[1.02]" 
-                                            alt="Selfie" 
-                                        />
-                                        <div className="absolute inset-0 bg-indigo-600/20 rounded-[2rem] opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                                            <ShieldCheck size={40} className="text-white" />
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
+                <form onSubmit={handleAddLoc} className="space-y-4">
+                    <div>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">Nome do Local</label>
+                        <input required value={newLoc.name} onChange={e => setNewLoc({...newLoc, name: e.target.value})} className="w-full p-4 bg-slate-50 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-indigo-500/20" placeholder="Ex: Matriz Administrativa" />
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">Endereço (Para GPS)</label>
+                        <div className="relative">
+                            <input required value={newLoc.address} onChange={e => setNewLoc({...newLoc, address: e.target.value})} className="w-full p-4 bg-slate-50 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 pr-12" placeholder="Rua Exemplo, 123 - Cidade" />
+                            {isSearchingAddress && <div className="absolute right-4 top-4"><Loader2 size={20} className="animate-spin text-indigo-500" /></div>}
                         </div>
+                        {newLoc.lat && (
+                            <p className="mt-2 text-[10px] text-emerald-600 font-bold flex items-center gap-1 pl-2">
+                                <CheckCircle2 size={12} /> GPS Detectado: {newLoc.lat.toFixed(4)}, {newLoc.lng?.toFixed(4)}
+                            </p>
+                        )}
                     </div>
-
-                    {/* Sessão de Mapa */}
-                    <div className="space-y-4">
-                         <p className="text-white font-black text-[10px] uppercase tracking-widest opacity-40">Geolocalização</p>
-                         <div className="w-full aspect-video bg-zinc-800 rounded-3xl overflow-hidden relative border border-white/5 group shadow-inner">
-                            <div className="absolute inset-0 opacity-10" style={{
-                                 backgroundImage: `linear-gradient(#444 1px, transparent 1px), linear-gradient(90deg, #444 1px, transparent 1px)`,
-                                 backgroundSize: '20px 20px'
-                            }}></div>
-                             <div className="absolute inset-0 flex items-center justify-center">
-                                <MapPin size={40} className="text-indigo-500 drop-shadow-2xl z-10" fill="currentColor" />
-                                <div className="w-8 h-8 bg-indigo-500/30 blur-xl rounded-full absolute"></div>
-                             </div>
-
-                            {selectedRecord.coords ? (
-                                 <a 
-                                    href={`https://www.google.com/maps/search/?api=1&query=${selectedRecord.coords.latitude},${selectedRecord.coords.longitude}`}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="absolute inset-0 z-20 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-all backdrop-blur-[2px]"
-                                 >
-                                    <span className="bg-white text-black text-[10px] font-black px-4 py-2 rounded-xl shadow-lg flex items-center gap-2">
-                                        ABRIR MAPA <Navigation size={10} />
-                                    </span>
-                                 </a>
-                            ) : (
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/60 z-20">
-                                    <span className="text-gray-500 text-[10px] font-black uppercase flex items-center gap-2"><Ban size={14} /> GPS não capturado</span>
-                                </div>
-                            )}
-                         </div>
-                    </div>
-
-                    <div className="pt-4 flex flex-col items-center gap-4">
-                        <p className="text-zinc-600 text-[8px] font-black text-center uppercase tracking-[0.3em]">Certificação Digital VeroPonto v2.0</p>
-                        <button 
-                            onClick={() => window.print()}
-                            className="w-full py-4 bg-white/5 hover:bg-white/10 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest border border-white/5 transition flex items-center justify-center gap-2"
-                        >
-                            <Printer size={16} /> Imprimir Comprovante
-                        </button>
-                    </div>
-                </div>
+                    <button disabled={isSubmitting} className="w-full py-4 bg-indigo-600 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-indigo-700 transition">
+                        {isSubmitting ? 'Salvando...' : 'Confirmar Cadastro'}
+                    </button>
+                </form>
             </div>
         </div>
       )}
 
-      {/* Visualizador de QR */}
-      {viewingQR && (
-        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in duration-300">
-          <div className="max-w-sm w-full bg-white rounded-[3.5rem] p-10 shadow-2xl text-center space-y-8 border border-slate-100">
-             <div className="flex justify-between items-center mb-2">
-                <span className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.3em]">Placa de Ponto</span>
-                <button onClick={() => setViewingQR(null)} className="p-2 hover:bg-slate-100 rounded-xl transition text-slate-400"><X size={20} /></button>
-             </div>
-             <div className="bg-white p-8 rounded-[3rem] shadow-inner border-8 border-slate-50 flex items-center justify-center qr-container">
-                <QRCodeSVG value={viewingQR.code} size={200} level="H" />
-             </div>
-             <div className="space-y-2">
-                <h4 className="text-2xl font-black text-slate-800 tracking-tight">{viewingQR.name}</h4>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{viewingQR.code}</p>
-             </div>
-             <div className="grid grid-cols-2 gap-3">
-                 <button onClick={handlePrintQRCode} className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all">
-                    <Printer size={18} /> Imprimir
-                 </button>
-                 <button onClick={handleDownloadImage} className="w-full py-5 bg-white border border-slate-200 text-slate-600 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-sm flex items-center justify-center gap-2 hover:bg-slate-50 transition-all">
-                    <ImageDown size={18} /> Baixar PNG
-                 </button>
+      {/* Detalhes Registro */}
+      {selectedRecord && (
+          <div className="fixed inset-0 z-[2000] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in">
+             <div className="bg-white rounded-[3rem] max-w-sm w-full p-8 shadow-2xl relative">
+                 <button onClick={() => setSelectedRecord(null)} className="absolute top-6 right-6 p-2 hover:bg-slate-100 rounded-full"><X size={20} /></button>
+                 <div className="text-center mb-6">
+                     <div className="w-20 h-20 rounded-full bg-slate-100 mx-auto mb-4 overflow-hidden shadow-inner">
+                        {selectedRecord.photo ? <img src={selectedRecord.photo} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-slate-300"><UserIcon size={32} /></div>}
+                     </div>
+                     <h3 className="text-xl font-black text-slate-800">{selectedRecord.userName}</h3>
+                     <p className="text-xs font-bold text-indigo-500 uppercase tracking-widest">{selectedRecord.employeeId}</p>
+                 </div>
+                 <div className="space-y-4">
+                     <div className="bg-slate-50 p-4 rounded-2xl flex justify-between items-center"><span className="text-xs font-bold text-slate-500">Horário</span><span className="text-sm font-black text-slate-800">{new Date(selectedRecord.timestamp).toLocaleTimeString()}</span></div>
+                     <div className="bg-slate-50 p-4 rounded-2xl flex justify-between items-center"><span className="text-xs font-bold text-slate-500">Local</span><div className="text-right"><span className="text-xs font-black text-slate-800 block">{selectedRecord.locationName?.split('(')[0] || 'Local'}</span>{selectedRecord.locationName?.includes('Fora') && <span className="text-[9px] text-amber-500 font-bold uppercase block">Fora de perímetro</span>}</div></div>
+                     {selectedRecord.coords && <a href={`https://www.google.com/maps/search/?api=1&query=${selectedRecord.coords.latitude},${selectedRecord.coords.longitude}`} target="_blank" className="block w-full py-4 bg-indigo-50 text-indigo-600 rounded-2xl font-black text-[10px] uppercase tracking-widest text-center hover:bg-indigo-100 transition">Ver no Mapa</a>}
+                 </div>
              </div>
           </div>
+      )}
+      
+      {/* MODAL SQL */}
+      {showSql && (
+        <div className="fixed inset-0 z-[2000] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in">
+            <div className="bg-white rounded-[3rem] p-8 max-w-2xl w-full shadow-2xl relative">
+                <button onClick={() => setShowSql(false)} className="absolute top-6 right-6 p-2 bg-slate-50 rounded-full hover:bg-slate-100"><X size={20} /></button>
+                <div className="mb-6">
+                    <h3 className="text-2xl font-black text-slate-800">Setup SQL</h3>
+                    <p className="text-slate-400 text-xs font-medium">Copie e execute no editor SQL do seu Supabase.</p>
+                </div>
+                <pre className="bg-slate-900 text-indigo-300 p-6 rounded-2xl text-[10px] font-mono overflow-auto max-h-[300px] mb-6">{SETUP_SQL}</pre>
+                <button 
+                  onClick={() => { navigator.clipboard.writeText(SETUP_SQL); setCopied(true); setTimeout(() => setCopied(false), 2000); }} 
+                  className="w-full py-4 bg-indigo-600 text-white rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-indigo-700"
+                >
+                    {copied ? <><Check size={16} /> Copiado!</> : <><Copy size={16} /> Copiar SQL</>}
+                </button>
+            </div>
         </div>
       )}
 
-      {/* Confirmação de Exclusão */}
-      {locationToDelete && (
-        <div className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in duration-200">
-          <div className="max-w-sm w-full bg-white rounded-[2.5rem] p-8 shadow-2xl border border-slate-100 text-center">
-             <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6"><Trash2 size={32} /></div>
-             <h3 className="text-xl font-black text-slate-800 mb-2">Excluir Unidade?</h3>
-             <p className="text-slate-500 text-sm mb-8">Deseja remover <strong>{locationToDelete.name}</strong>?</p>
-             <div className="flex flex-col gap-3">
-               <button onClick={executeDeleteLocation} disabled={isDeleting} className="w-full py-4 bg-red-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest">{isDeleting ? <Loader2 size={16} className="animate-spin" /> : "Confirmar Exclusão"}</button>
-               <button onClick={() => setLocationToDelete(null)} className="w-full py-4 bg-white border border-slate-200 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-widest">Cancelar</button>
-             </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

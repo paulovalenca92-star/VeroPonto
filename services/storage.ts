@@ -198,7 +198,7 @@ export const StorageService = {
       type: r.type,
       timestamp: Number(r.timestamp),
       locationCode: r.location_code,
-      location_name: r.location_name,
+      locationName: r.location_name, // CORRIGIDO: de location_name para locationName
       photo: r.photo,
       coords: (r.coords_lat && r.coords_lng) ? { latitude: r.coords_lat, longitude: r.coords_lng } : undefined
     })) as TimeRecord[];

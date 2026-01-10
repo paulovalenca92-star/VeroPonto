@@ -39,8 +39,6 @@ const SelfieCamera: React.FC<SelfieCameraProps> = ({ onCapture, onCancel }) => {
             setStream(currentStream);
             if (videoRef.current) {
               videoRef.current.srcObject = currentStream;
-              // NOTA: O play() agora é chamado no onLoadedMetadata do elemento de vídeo
-              // para evitar "The play() request was interrupted".
             }
         } else {
             currentStream.getTracks().forEach(track => track.stop());
@@ -67,9 +65,8 @@ const SelfieCamera: React.FC<SelfieCameraProps> = ({ onCapture, onCancel }) => {
   }, []);
 
   const handleVideoLoaded = () => {
-    // Só tenta dar play quando o vídeo estiver pronto
     if (videoRef.current) {
-        videoRef.current.play().catch(e => console.log("Play interrompido (normal se fechado rápido)"));
+        videoRef.current.play().catch(e => console.log("Play interrompido"));
     }
   };
 
@@ -91,7 +88,7 @@ const SelfieCamera: React.FC<SelfieCameraProps> = ({ onCapture, onCancel }) => {
 
   if (error) {
     return (
-      <div className="fixed inset-0 z-[200] bg-slate-900 flex flex-col items-center justify-center p-8 text-center">
+      <div className="fixed inset-0 z-[2000] bg-slate-900 flex flex-col items-center justify-center p-8 text-center">
         <div className="bg-white/10 p-6 rounded-[2.5rem] border border-white/10 space-y-4 max-w-sm">
           <AlertCircle size={48} className="text-red-400 mx-auto" />
           <h3 className="text-white text-xl font-bold">Erro na Câmera</h3>
@@ -103,13 +100,13 @@ const SelfieCamera: React.FC<SelfieCameraProps> = ({ onCapture, onCancel }) => {
   }
 
   return (
-    <div className="fixed inset-0 z-[200] bg-slate-900 flex flex-col items-center justify-between py-12 px-6 overflow-hidden">
-      <div className="text-center space-y-2">
+    <div className="fixed inset-0 z-[2000] bg-slate-900 flex flex-col items-center justify-between py-12 px-6 overflow-hidden h-[100dvh]">
+      <div className="text-center space-y-2 mt-4 safe-top">
         <h3 className="text-white text-2xl font-black tracking-tight">Selfie do Ponto</h3>
         <p className="text-indigo-200/60 text-sm font-medium">Enquadre seu rosto</p>
       </div>
 
-      <div className="relative w-72 h-72 sm:w-80 sm:h-80">
+      <div className="relative w-[70vw] h-[70vw] max-w-[320px] max-h-[320px]">
         <div className="absolute inset-0 border-[4px] border-indigo-500/40 rounded-full z-10 animate-pulse"></div>
         <div className="w-full h-full rounded-full overflow-hidden bg-slate-800 shadow-2xl relative border-4 border-white/5">
           {!isPhotoTaken ? (
@@ -128,7 +125,7 @@ const SelfieCamera: React.FC<SelfieCameraProps> = ({ onCapture, onCancel }) => {
         </div>
       </div>
 
-      <div className="w-full max-w-xs space-y-4">
+      <div className="w-full max-w-xs space-y-4 safe-bottom mb-4">
         {!isPhotoTaken ? (
           <button onClick={takePhoto} className="w-full py-5 bg-white text-indigo-700 rounded-[2rem] font-black text-lg flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all">
             <Camera size={24} /> CAPTURAR
