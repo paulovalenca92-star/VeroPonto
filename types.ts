@@ -33,6 +33,7 @@ export interface TimeRecord {
 export interface Location {
   id: string;
   name: string;
+  address?: string;
   code: string;
   workspaceId: string;
   latitude?: number;

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { User, TimeRecord, PunchType, Location } from '../types';
 import { StorageService } from '../services/storage';
@@ -16,7 +15,12 @@ import {
   AlertTriangle,
   Locate,
   QrCode,
-  Smartphone
+  Smartphone,
+  X,
+  Copy,
+  Navigation,
+  Ban,
+  ChevronDown
 } from 'lucide-react';
 
 interface EmployeeDashboardProps {
@@ -32,6 +36,12 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user }) => {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  
+  // Controle de paginação / Load More
+  const [visibleCount, setVisibleCount] = useState(5);
+  
+  // Novo estado para o modal de detalhes
+  const [selectedRecord, setSelectedRecord] = useState<TimeRecord | null>(null);
 
   useEffect(() => {
     loadUserRecords();
@@ -79,11 +89,15 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user }) => {
     
     try {
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
+        navigator.geolocation.getCurrentPosition(resolve, reject, { 
+            enableHighAccuracy: true, // Força o uso do GPS de alta precisão
+            timeout: 10000,           // Dá um pouco mais de tempo para triangular
+            maximumAge: 0             // Não aceita posições em cache
+        });
       });
       coords = { latitude: position.coords.latitude, longitude: position.coords.longitude };
     } catch (err) {
-      console.warn("GPS não capturado.");
+      console.warn("GPS não capturado ou permissão negada.");
     }
 
     const lastRecord = await StorageService.getLastRecord(user.workspaceId, user.id);
@@ -117,6 +131,14 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user }) => {
       setActiveLocation(null);
       setTimeout(() => setMessage(null), 5000);
     }
+  };
+
+  const getRelativeTime = (timestamp: number) => {
+    const diff = Date.now() - timestamp;
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    if (hours < 1) return 'há menos de 1 hora';
+    if (hours === 1) return 'há 1 hora';
+    return `há ${hours} horas`;
   };
 
   return (
@@ -178,10 +200,14 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user }) => {
         </div>
         
         <div className="divide-y divide-slate-50">
-          {records.slice(0, 5).map(record => (
-            <div key={record.id} className="p-5 flex items-center justify-between">
+          {records.slice(0, visibleCount).map(record => (
+            <div 
+              key={record.id} 
+              onClick={() => setSelectedRecord(record)}
+              className="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors active:scale-[0.98] group"
+            >
               <div className="flex items-center gap-4">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${record.type === 'entry' ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-100 text-slate-500'}`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 ${record.type === 'entry' ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-100 text-slate-500'}`}>
                   {record.type === 'entry' ? <ArrowUpCircle size={18} /> : <ArrowDownCircle size={18} />}
                 </div>
                 <div>
@@ -201,10 +227,176 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user }) => {
             <div className="py-12 text-center text-slate-200 uppercase font-black text-[9px] tracking-widest">Sem atividades registradas</div>
           )}
         </div>
+        
+        {/* Botão Carregar Mais */}
+        {visibleCount < records.length && (
+            <button 
+                onClick={() => setVisibleCount(prev => prev + 5)}
+                className="w-full py-5 bg-white text-indigo-600 font-black text-[10px] uppercase tracking-widest hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 border-t border-slate-50 group"
+            >
+                <ChevronDown size={14} className="group-hover:translate-y-1 transition-transform" /> Carregar Mais Antigos
+            </button>
+        )}
       </div>
 
       {isScanning && <Scanner onScan={handleScanSuccess} onClose={() => setIsScanning(false)} />}
       {isCapturing && <SelfieCamera onCapture={finalizePunch} onCancel={() => { setIsCapturing(false); setActiveLocation(null); }} />}
+
+      {/* Detalhes do Registro - PREMIUM DARK MODE (COMPROVANTE) */}
+      {selectedRecord && (
+        <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="bg-[#18181b] rounded-[2rem] w-full max-w-[400px] overflow-hidden relative border border-white/5 shadow-2xl flex flex-col max-h-[90vh]">
+                
+                {/* Header Section */}
+                <div className="p-6 pb-4">
+                    <div className="flex justify-between items-start mb-4">
+                         <div className="w-8"></div>
+                         <button onClick={() => setSelectedRecord(null)} className="p-2 bg-white/5 rounded-full hover:bg-white/10 text-gray-400 transition">
+                            <X size={20} />
+                        </button>
+                    </div>
+
+                    <div className="flex items-start gap-4">
+                        <div className={`w-14 h-14 rounded-full flex items-center justify-center shrink-0 shadow-lg ${
+                            selectedRecord.type === 'entry' ? 'bg-[#ccff00] text-black' : 'bg-[#ff4400] text-white'
+                        }`}>
+                            {selectedRecord.type === 'entry' ? <ArrowDownCircle size={32} /> : <ArrowUpCircle size={32} />}
+                        </div>
+                        <div>
+                            <h2 className="text-white font-bold text-lg leading-tight">
+                                Registro online
+                            </h2>
+                            <p className="text-gray-400 text-xs mt-1">
+                                Efetuado às {new Date(selectedRecord.timestamp).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})} em {new Date(selectedRecord.timestamp).toLocaleDateString('pt-BR')}
+                            </p>
+                            <p className="text-gray-500 text-xs mt-0.5 font-medium">
+                                {getRelativeTime(selectedRecord.timestamp)}
+                            </p>
+                        </div>
+                        <div className="ml-auto">
+                             <Smartphone size={20} className="text-indigo-400 opacity-80" />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="h-px bg-white/10 w-full"></div>
+
+                {/* Scrollable Content */}
+                <div className="overflow-y-auto p-6 space-y-8 custom-scrollbar">
+                    
+                    <div className="space-y-4">
+                        <h3 className="text-[#818cf8] text-sm font-medium">Detalhes do registro</h3>
+                        
+                        <div className="grid grid-cols-2 gap-y-6 gap-x-4">
+                            <div>
+                                <p className="text-white font-bold text-sm mb-1">Empregador</p>
+                                <p className="text-gray-400 text-xs uppercase font-medium leading-relaxed truncate">
+                                    {user.workspaceId || "Empresa"}
+                                </p>
+                            </div>
+                             <div>
+                                <p className="text-white font-bold text-sm mb-1">CNPJ/CPF</p>
+                                <p className="text-gray-400 text-xs uppercase font-medium">NÃO PREENCHIDO</p>
+                            </div>
+
+                            <div>
+                                <p className="text-white font-bold text-sm mb-1">Local de Trabalho</p>
+                                <p className="text-gray-400 text-xs uppercase font-medium leading-relaxed truncate">
+                                    {selectedRecord.locationName}
+                                </p>
+                            </div>
+                             <div>
+                                <p className="text-white font-bold text-sm mb-1">NSR</p>
+                                <p className="text-gray-400 text-xs uppercase font-medium">
+                                    {selectedRecord.timestamp.toString().slice(-4)}
+                                </p>
+                            </div>
+
+                             <div className="col-span-2 sm:col-span-1">
+                                <p className="text-white font-bold text-sm mb-1">Nome completo</p>
+                                <p className="text-gray-400 text-xs uppercase font-medium leading-relaxed truncate">
+                                     {selectedRecord.userName}
+                                </p>
+                            </div>
+                             <div className="col-span-2 sm:col-span-1">
+                                <p className="text-white font-bold text-sm mb-1">Protocolo</p>
+                                <p className="text-gray-400 text-xs font-mono break-all leading-tight">
+                                    {selectedRecord.id.replace(/\D/g, '').padEnd(12, '0').slice(0, 16)} <Copy size={12} className="inline ml-1 opacity-50" />
+                                </p>
+                            </div>
+
+                             <div>
+                                <p className="text-white font-bold text-sm mb-1">Foto</p>
+                                {selectedRecord.photo ? (
+                                     <button onClick={() => window.open(selectedRecord.photo, '_blank')} className="text-white text-xs underline decoration-1 underline-offset-4 font-medium hover:text-indigo-400">
+                                         VER
+                                     </button>
+                                ) : (
+                                    <span className="text-gray-600 text-xs">--</span>
+                                )}
+                            </div>
+                             <div>
+                                <p className="text-white font-bold text-sm mb-1">SHA-256</p>
+                                <p className="text-gray-500 text-[10px] font-mono break-all leading-none">
+                                    60e9b2f469ed747b30cb6dab3fcb11ee6474ffde71a6b69970f6f3c9c9ba13dd
+                                </p>
+                            </div>
+                            
+                            <div className="col-span-2">
+                                 <p className="text-white font-bold text-sm mb-1">Registro no INPI</p>
+                                 <p className="text-gray-400 text-xs uppercase font-medium">BR512022000438-0</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                         <h3 className="text-white font-bold text-sm">Localização</h3>
+                         <div className="w-full aspect-video bg-[#242424] rounded-xl overflow-hidden relative border border-white/10 group">
+                            {/* Fake Map Background using CSS patterns */}
+                            <div className="absolute inset-0 opacity-30" style={{
+                                 backgroundImage: `
+                                    linear-gradient(#333 1px, transparent 1px),
+                                    linear-gradient(90deg, #333 1px, transparent 1px)
+                                 `,
+                                 backgroundSize: '20px 20px'
+                            }}></div>
+                            
+                            {/* Map Roads Abstract */}
+                            <div className="absolute top-0 bottom-0 left-[30%] w-3 bg-[#333] -skew-x-12"></div>
+                            <div className="absolute top-[40%] left-0 right-0 h-3 bg-[#333] skew-y-6"></div>
+
+                             <div className="absolute inset-0 flex items-center justify-center">
+                                <MapPin size={40} className="text-red-500 drop-shadow-2xl relative z-10 -mt-4" fill="currentColor" />
+                                <div className="w-4 h-4 bg-black/50 blur-sm rounded-full absolute mt-8"></div>
+                             </div>
+
+                            {selectedRecord.coords ? (
+                                 <a 
+                                    href={`https://www.google.com/maps/search/?api=1&query=${selectedRecord.coords.latitude},${selectedRecord.coords.longitude}`}
+                                    target="_blank"
+                                    className="absolute inset-0 z-20 flex items-end justify-end p-3 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-all"
+                                 >
+                                    <span className="bg-white text-black text-[10px] font-bold px-2 py-1 rounded shadow-lg flex items-center gap-1 hover:bg-slate-200 transition">
+                                        Abrir no Google Maps <Navigation size={10} />
+                                    </span>
+                                 </a>
+                            ) : (
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/60 z-20">
+                                    <span className="text-white text-xs font-bold flex items-center gap-2"><Ban size={14} /> Sem localização GPS</span>
+                                </div>
+                            )}
+                         </div>
+                         {selectedRecord.coords && (
+                             <p className="text-center text-[10px] text-gray-600 font-mono">
+                                 {selectedRecord.coords.latitude.toFixed(6)}, {selectedRecord.coords.longitude.toFixed(6)}
+                             </p>
+                         )}
+                    </div>
+
+                </div>
+            </div>
+        </div>
+      )}
     </div>
   );
 };

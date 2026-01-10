@@ -1,15 +1,14 @@
-
 import { createClient } from '@supabase/supabase-js';
 import { User, TimeRecord, Location, PunchType } from '../types';
 
-export const SETUP_SQL = `-- RESET TOTAL E CRIAÇÃO
-DROP TABLE IF EXISTS public.time_records;
-DROP TABLE IF EXISTS public.locations;
-DROP TABLE IF EXISTS public.profiles;
+// SQL DE CORREÇÃO E ATUALIZAÇÃO (VERSÃO 2.2 - CORREÇÃO DE DELETE)
+export const SETUP_SQL = `-- SCRIPT DE REPARO (VERSÃO 2.2 - CORREÇÃO DE DELETE)
+-- Rode este script no SQL Editor para liberar as permissões de exclusão.
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
-CREATE TABLE public.profiles (
+-- 1. Garantir tabelas
+CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   email TEXT NOT NULL,
@@ -19,15 +18,18 @@ CREATE TABLE public.profiles (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE public.locations (
+CREATE TABLE IF NOT EXISTS public.locations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
+  address TEXT,
   code TEXT UNIQUE NOT NULL,
   workspace_id TEXT NOT NULL,
+  latitude DOUBLE PRECISION,
+  longitude DOUBLE PRECISION,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE public.time_records (
+CREATE TABLE IF NOT EXISTS public.time_records (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   user_name TEXT,
@@ -43,13 +45,22 @@ CREATE TABLE public.time_records (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 2. RESETAR POLÍTICAS DE SEGURANÇA (RLS)
+-- Isso garante que não existam regras antigas bloqueando o DELETE
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.locations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.time_records ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow All" ON public.profiles;
+DROP POLICY IF EXISTS "Allow All" ON public.locations;
+DROP POLICY IF EXISTS "Allow All" ON public.time_records;
+DROP POLICY IF EXISTS "Allow Delete" ON public.locations;
+
+-- Cria política permissiva total para garantir que o DELETE funcione
 CREATE POLICY "Allow All" ON public.profiles FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow All" ON public.locations FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow All" ON public.time_records FOR ALL USING (true) WITH CHECK (true);`;
+CREATE POLICY "Allow All" ON public.time_records FOR ALL USING (true) WITH CHECK (true);
+`;
 
 const supabaseUrl = 'https://ytwmspnmjlflzsxlpftd.supabase.co';
 const supabaseKey = 'sb_publishable_mzaDAXN1gLVl3Di5iK1_cQ_7FJhxjOI';
@@ -110,26 +121,65 @@ export const StorageService = {
       employee_id: user.employeeId,
       workspace_id: user.workspaceId
     });
-    if (error && isTableMissingError(error)) throw new Error("DB_NOT_READY");
+    if (error) {
+      if (isTableMissingError(error)) throw new Error("DB_NOT_READY");
+      throw error;
+    }
+  },
+
+  deleteUser: async (id: string) => {
+    const { error } = await supabase.from('profiles').delete().eq('id', id);
+    if (error) throw error;
   },
 
   getLocations: async (workspaceId: string): Promise<Location[]> => {
-    const { data, error } = await supabase.from('locations').select('*').eq('workspace_id', workspaceId);
+    const { data, error } = await supabase.from('locations').select('*').eq('workspace_id', workspaceId).order('created_at', { ascending: false });
     if (error && isTableMissingError(error)) throw new Error("DB_NOT_READY");
     return (data || []) as Location[];
   },
   
-  saveLocation: async (loc: Location) => {
-    const { error } = await supabase.from('locations').insert({ 
-      name: loc.name, 
+  saveLocation: async (loc: Omit<Location, 'id'>) => {
+    const payload: any = {
+      name: loc.name,
       code: loc.code,
       workspace_id: loc.workspaceId
-    });
-    if (error && isTableMissingError(error)) throw new Error("DB_NOT_READY");
+    };
+    if (loc.address) payload.address = loc.address;
+    
+    // Verificação estrita de número para garantir que 0 é aceito, mas null/undefined não
+    if (typeof loc.latitude === 'number') payload.latitude = loc.latitude;
+    if (typeof loc.longitude === 'number') payload.longitude = loc.longitude;
+
+    const { error } = await supabase.from('locations').insert(payload);
+    
+    if (error) {
+      if (error.code === '42703' || error.message?.includes('column')) {
+          console.error("Erro de Coluna Faltante:", error.message);
+          throw new Error("MISSING_COLUMNS");
+      }
+      throw error; 
+    }
   },
 
   deleteLocation: async (id: string) => {
-    await supabase.from('locations').delete().eq('id', id);
+    // AQUI ESTÁ A CORREÇÃO: count: 'exact' garante que sabemos se algo foi deletado
+    const { error, count } = await supabase.from('locations').delete({ count: 'exact' }).eq('id', id);
+    
+    if (error) {
+        console.error("Erro Supabase Delete:", error);
+        throw error;
+    }
+
+    // Se count for 0 ou null, significa que nada foi apagado (provavelmente problema de permissão RLS)
+    // Lançamos erro para a interface saber e desfazer a remoção visual
+    if (count === 0 || count === null) {
+       throw new Error("DELETE_FAILED_NO_ROWS");
+    }
+  },
+
+  deleteLocationByCode: async (code: string) => {
+    const { error } = await supabase.from('locations').delete().eq('code', code);
+    if (error) throw error;
   },
 
   getRecords: async (workspaceId: string, userId?: string): Promise<TimeRecord[]> => {
@@ -138,6 +188,7 @@ export const StorageService = {
     
     const { data, error } = await query;
     if (error && isTableMissingError(error)) throw new Error("DB_NOT_READY");
+    
     return (data || []).map(r => ({
       id: r.id,
       userId: r.user_id,
@@ -147,14 +198,14 @@ export const StorageService = {
       type: r.type,
       timestamp: Number(r.timestamp),
       locationCode: r.location_code,
-      locationName: r.location_name,
+      location_name: r.location_name,
       photo: r.photo,
-      coords: r.coords_lat ? { latitude: r.coords_lat, longitude: r.coords_lng } : undefined
+      coords: (r.coords_lat && r.coords_lng) ? { latitude: r.coords_lat, longitude: r.coords_lng } : undefined
     })) as TimeRecord[];
   },
   
   addRecord: async (record: TimeRecord) => {
-    const { error } = await supabase.from('time_records').insert({
+    const payload: any = {
       user_id: record.userId,
       user_name: record.userName,
       employee_id: record.employeeId,
@@ -163,11 +214,30 @@ export const StorageService = {
       timestamp: record.timestamp,
       location_code: record.locationCode,
       location_name: record.locationName,
-      photo: record.photo,
-      coords_lat: record.coords?.latitude,
-      coords_lng: record.coords?.longitude
-    });
-    if (error && isTableMissingError(error)) throw new Error("DB_NOT_READY");
+      photo: record.photo
+    };
+
+    if (record.coords) {
+        payload.coords_lat = record.coords.latitude;
+        payload.coords_lng = record.coords.longitude;
+    }
+
+    const { error } = await supabase.from('time_records').insert(payload);
+
+    if (error) {
+      if (isTableMissingError(error)) throw new Error("DB_NOT_READY");
+      
+      if (error.code === '42703' || error.message?.includes('coords')) {
+          console.warn("Banco desatualizado. Salvando ponto sem GPS.");
+          delete payload.coords_lat;
+          delete payload.coords_lng;
+          
+          const { error: retryError } = await supabase.from('time_records').insert(payload);
+          if (retryError) throw retryError;
+          return;
+      }
+      throw error;
+    }
   },
 
   getLastRecord: async (workspaceId: string, userId: string): Promise<TimeRecord | undefined> => {
@@ -176,10 +246,19 @@ export const StorageService = {
   },
 
   exportToCSV: (records: TimeRecord[]) => {
-    const headers = ['Nome', 'Matrícula', 'Tipo', 'Data', 'Hora', 'Local'];
+    const headers = ['Nome', 'Matrícula', 'Tipo', 'Data', 'Hora', 'Local', 'Latitude', 'Longitude'];
     const rows = records.map(r => {
       const date = new Date(r.timestamp);
-      return [r.userName, r.employeeId, r.type === 'entry' ? 'Entrada' : 'Saída', date.toLocaleDateString(), date.toLocaleTimeString(), r.locationName];
+      return [
+          r.userName, 
+          r.employeeId, 
+          r.type === 'entry' ? 'Entrada' : 'Saída', 
+          date.toLocaleDateString(), 
+          date.toLocaleTimeString(), 
+          r.locationName,
+          r.coords?.latitude || '',
+          r.coords?.longitude || ''
+      ];
     });
     const csvContent = "\uFEFF" + [headers, ...rows].map(e => e.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });

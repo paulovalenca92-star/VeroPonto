@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { AuthState, User } from './types';
 import { StorageService, supabase, SETUP_SQL } from './services/storage';
@@ -37,8 +36,16 @@ const App: React.FC = () => {
       await fetchProfile(session.user.id);
     } else {
       try {
-        const { error } = await supabase.from('locations').select('id').limit(1);
-        if (error && (error.code === '42P01' || error.message.includes('not found'))) {
+        // Tenta selecionar a coluna 'address' para garantir que o esquema está atualizado
+        // Se a tabela não existir (42P01) ou a coluna não existir (42703), aciona o setup
+        const { error } = await supabase.from('locations').select('address').limit(1);
+        
+        if (error && (
+            error.code === '42P01' || 
+            error.code === '42703' || 
+            error.message.includes('not found') || 
+            error.message.includes('does not exist')
+        )) {
           setDbMissing(true);
         }
         setAuth(prev => ({ ...prev, loading: false }));
@@ -86,7 +93,7 @@ const App: React.FC = () => {
               <Database size={40} />
             </div>
             <h2 className="text-3xl font-black text-slate-800 tracking-tight">Setup de Infraestrutura</h2>
-            <p className="text-slate-500 font-medium max-w-md">Para começar a vender o VeroPonto, você precisa inicializar as tabelas no seu Supabase.</p>
+            <p className="text-slate-500 font-medium max-w-md">Para começar a usar o VeroPonto, você precisa atualizar as tabelas no seu Supabase.</p>
           </div>
 
           <div className="space-y-6">

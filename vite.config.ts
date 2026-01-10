@@ -1,4 +1,3 @@
-
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
@@ -9,6 +8,7 @@ export default defineConfig({
     sourcemap: true
   },
   define: {
-    'process.env': process.env
+    // Garante que o process.env.API_KEY do ambiente de build chegue ao navegador
+    'process.env.API_KEY': JSON.stringify(process.env.API_KEY)
   }
 });
