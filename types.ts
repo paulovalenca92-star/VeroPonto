@@ -34,6 +34,7 @@ export interface Location {
   id: string;
   name: string;
   address?: string;
+  document?: string; // CPF ou CNPJ
   code: string;
   workspaceId: string;
   latitude?: number;
@@ -41,7 +42,7 @@ export interface Location {
 }
 
 export interface AuthState {
-  user: User | null;
+  user: null | User;
   isAuthenticated: boolean;
   loading: boolean;
 }

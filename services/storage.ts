@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 import { User, TimeRecord, Location, PunchType } from '../types';
 
@@ -74,27 +75,33 @@ export const StorageService = {
   getLocations: async (workspaceId: string): Promise<Location[]> => {
     const { data, error } = await supabase.from('locations').select('*').eq('workspace_id', workspaceId).order('created_at', { ascending: false });
     if (error && isTableMissingError(error)) throw new Error("DB_NOT_READY");
-    return (data || []) as Location[];
+    return (data || []).map(l => ({
+      id: l.id,
+      name: l.name,
+      address: l.address,
+      document: l.document,
+      code: l.code,
+      workspaceId: l.workspace_id,
+      latitude: l.latitude,
+      longitude: l.longitude
+    })) as Location[];
   },
   
   saveLocation: async (loc: Omit<Location, 'id'>) => {
     const payload: any = {
       name: loc.name,
       code: loc.code,
-      workspace_id: loc.workspaceId
+      workspace_id: loc.workspaceId,
+      address: loc.address,
+      document: loc.document,
+      latitude: loc.latitude,
+      longitude: loc.longitude
     };
-    if (loc.address) payload.address = loc.address;
-    
-    if (typeof loc.latitude === 'number') payload.latitude = loc.latitude;
-    if (typeof loc.longitude === 'number') payload.longitude = loc.longitude;
 
     const { error } = await supabase.from('locations').insert(payload);
     
     if (error) {
-      if (error.code === '42703' || error.message?.includes('column')) {
-          console.error("Erro de Coluna Faltante:", error.message);
-          throw new Error("MISSING_COLUMNS");
-      }
+      console.error("Erro ao salvar localização:", error);
       throw error; 
     }
   },
@@ -126,6 +133,11 @@ export const StorageService = {
       coords: (r.coords_lat && r.coords_lng) ? { latitude: r.coords_lat, longitude: r.coords_lng } : undefined
     })) as TimeRecord[];
   },
+
+  getLastRecord: async (workspaceId: string, userId: string): Promise<TimeRecord | null> => {
+    const records = await StorageService.getRecords(workspaceId, userId);
+    return records.length > 0 ? records[0] : null;
+  },
   
   addRecord: async (record: TimeRecord) => {
     const payload: any = {
@@ -149,20 +161,8 @@ export const StorageService = {
 
     if (error) {
       if (isTableMissingError(error)) throw new Error("DB_NOT_READY");
-      if (error.code === '42703' || error.message?.includes('coords')) {
-          delete payload.coords_lat;
-          delete payload.coords_lng;
-          const { error: retryError } = await supabase.from('time_records').insert(payload);
-          if (retryError) throw retryError;
-          return;
-      }
       throw error;
     }
-  },
-
-  getLastRecord: async (workspaceId: string, userId: string): Promise<TimeRecord | undefined> => {
-    const records = await StorageService.getRecords(workspaceId, userId);
-    return records[0];
   },
 
   exportToCSV: (records: TimeRecord[]) => {
