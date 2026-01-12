@@ -5,23 +5,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     
-    <!-- PWA Primary Meta Tags -->
     <title>VeroPonto | Gestão de Jornada</title>
     <meta name="description" content="Controle de ponto profissional com geolocalização e IA." />
     <meta name="theme-color" content="#0a0f1a" />
     
-    <!-- PWA Manifest -->
+    <!-- PWA Config -->
     <link rel="manifest" href="/manifest.json" />
-    
-    <!-- iOS / Apple Support -->
+    <link rel="icon" type="image/png" href="/fingerprint.png" />
+    <link rel="apple-touch-icon" href="/fingerprint.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="VeroPonto" />
-    <link rel="apple-touch-icon" href="/fingerprint.png" />
-    
-    <!-- Favicon -->
-    <link rel="icon" type="image/png" href="/fingerprint.png" />
-    
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -37,7 +31,6 @@
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     
-    <!-- Leaflet para Mapas -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -86,17 +79,7 @@
           margin: 0 !important;
           border-radius: 0 !important;
           box-shadow: none !important;
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
         }
-        .printable-receipt * { visibility: visible !important; color: black !important; border-color: #000 !important; background-color: transparent !important; box-shadow: none !important; }
-        .no-print { display: none !important; }
-        .print-logo { display: flex !important; align-items: center !important; gap: 10px !important; margin-bottom: 20px !important; border-bottom: 2px solid #000 !important; padding-bottom: 15px !important; }
-        .print-header-title { font-size: 18pt !important; font-weight: 900 !important; text-transform: uppercase !important; }
-        .print-divider { border-top: 1px dashed #000 !important; margin: 15px 0 !important; }
-        .print-label { font-size: 8pt !important; font-weight: 800 !important; text-transform: uppercase !important; color: #333 !important; }
-        .print-value { font-size: 11pt !important; font-weight: 700 !important; }
-        .print-footer { margin-top: 30px !important; font-size: 7pt !important; text-align: center !important; border-top: 1px solid #000 !important; padding-top: 10px !important; }
       }
     </style>
 <script type="importmap">
@@ -121,39 +104,20 @@
     <script type="module" src="/index.tsx"></script>
     
     <script>
-      // Registro otimizado do Service Worker
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/service-worker.js')
-            .then(registration => {
-              console.log('VeroPonto: Service Worker registrado com sucesso no escopo:', registration.scope);
-              
-              // Gerenciamento de atualizações
-              registration.onupdatefound = () => {
-                const installingWorker = registration.installing;
-                if (installingWorker) {
-                  installingWorker.onstatechange = () => {
-                    if (installingWorker.state === 'installed') {
-                      if (navigator.serviceWorker.controller) {
-                        // Nova versão disponível!
-                        window.dispatchEvent(new CustomEvent('sw-update-available', { detail: registration }));
-                      }
-                    }
-                  };
-                }
+          navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
+            .then(reg => {
+              console.log('SW ativo:', reg.scope);
+              reg.onupdatefound = () => {
+                const worker = reg.installing;
+                worker.onstatechange = () => {
+                  if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+                    window.dispatchEvent(new CustomEvent('sw-update-available', { detail: reg }));
+                  }
+                };
               };
-            })
-            .catch(error => {
-              console.error('VeroPonto: Erro ao registrar Service Worker:', error);
             });
-        });
-
-        // Lógica para recarregar quando o novo worker assumir
-        let refreshing = false;
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-          if (refreshing) return;
-          refreshing = true;
-          window.location.reload();
         });
       }
     </script>
