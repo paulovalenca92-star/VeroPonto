@@ -1,13 +1,9 @@
 
-const CACHE_NAME = 'veroponto-v1.2';
+const CACHE_NAME = 'veroponto-v1.4';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
-  '/manifest.json',
-  '/fingerprint.png',
-  'https://cdn.tailwindcss.com',
-  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
-  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+  '/manifest.json'
 ];
 
 self.addEventListener('install', (event) => {
@@ -31,8 +27,10 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Não cacheia chamadas de API (Supabase, Gemini)
-  if (event.request.url.includes('supabase.co') || event.request.url.includes('googleapis.com')) {
+  // Ignora solicitações que não sejam GET e chamadas de API externas
+  if (event.request.method !== 'GET' || 
+      event.request.url.includes('supabase.co') || 
+      event.request.url.includes('googleapis.com')) {
     return;
   }
 
@@ -42,25 +40,17 @@ self.addEventListener('fetch', (event) => {
         return cachedResponse;
       }
       return fetch(event.request).then((networkResponse) => {
-        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+        if (!networkResponse || networkResponse.status !== 200) {
           return networkResponse;
         }
-        const responseToCache = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
-        });
+        // Opcional: Cachear novos recursos estáticos aqui se necessário
         return networkResponse;
       }).catch(() => {
+        // Fallback offline para navegação
         if (event.request.mode === 'navigate') {
           return caches.match('/');
         }
       });
     })
   );
-});
-
-self.addEventListener('message', (event) => {
-  if (event.data === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
 });
