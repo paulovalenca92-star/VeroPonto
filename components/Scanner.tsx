@@ -23,9 +23,9 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onClose }) => {
 
   useEffect(() => {
     let scannerInstance: Html5Qrcode | null = null;
+    let observer: MutationObserver | null = null;
 
     const startScanner = async () => {
-      // Trava de segurança para não iniciar duas vezes
       if (isStarted.current) return;
       
       const element = document.getElementById(elementId);
@@ -39,6 +39,20 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onClose }) => {
         
         scannerRef.current = scannerInstance;
 
+        // Inicia a observação do DOM para injetar atributos no vídeo assim que ele for criado pela lib
+        observer = new MutationObserver(() => {
+            const video = element.querySelector('video');
+            if (video) {
+                video.setAttribute('autoplay', 'true');
+                video.setAttribute('muted', 'true');
+                video.setAttribute('playsinline', 'true');
+                video.removeAttribute('controls');
+                // @ts-ignore
+                video.disablePictureInPicture = true;
+            }
+        });
+        observer.observe(element, { childList: true, subtree: true });
+
         await scannerInstance.start(
           { facingMode: "environment" },
           {
@@ -48,7 +62,6 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onClose }) => {
             disableFlip: false
           },
           (decodedText) => {
-            // Executa o scan apenas se ainda estiver "ativo"
             if (isStarted.current) {
                isStarted.current = false;
                scannerInstance?.stop().then(() => {
@@ -58,7 +71,7 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onClose }) => {
                });
             }
           },
-          () => { /* ignore frame errors para evitar logs excessivos */ }
+          () => { /* ignore frame errors */ }
         );
 
         isStarted.current = true;
@@ -79,20 +92,20 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onClose }) => {
       }
     };
 
-    // Pequeno delay para garantir estabilidade do DOM antes da inicialização
     const timer = setTimeout(startScanner, 300);
 
     return () => {
       clearTimeout(timer);
+      if (observer) observer.disconnect();
       if (scannerRef.current && isStarted.current) {
         const instance = scannerRef.current;
         isStarted.current = false;
         instance.stop()
           .then(() => instance.clear())
-          .catch(err => console.debug("Scanner cleanup error (safe to ignore):", err));
+          .catch(err => console.debug("Scanner cleanup error:", err));
       }
     };
-  }, [elementId]); // Única dependência é o ID do elemento, fixo durante o ciclo de vida
+  }, [elementId]);
 
   return (
     <div className="fixed inset-0 z-[2000] bg-slate-900/95 backdrop-blur-sm flex flex-col items-center justify-center p-6 animate-in fade-in duration-300">

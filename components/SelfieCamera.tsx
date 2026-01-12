@@ -24,11 +24,12 @@ const SelfieCamera: React.FC<SelfieCameraProps> = ({ onCapture, onCancel }) => {
           throw new Error("Câmera não suportada neste navegador.");
         }
 
+        // Restrições otimizadas para APK/WebView conforme solicitado
         const constraints = { 
           video: { 
             facingMode: 'user', 
-            width: { ideal: 640 }, 
-            height: { ideal: 640 } 
+            width: { ideal: 1280 }, 
+            height: { ideal: 720 } 
           }, 
           audio: false 
         };
@@ -39,6 +40,8 @@ const SelfieCamera: React.FC<SelfieCameraProps> = ({ onCapture, onCancel }) => {
             setStream(currentStream);
             if (videoRef.current) {
               videoRef.current.srcObject = currentStream;
+              // Força o play após atribuir o stream
+              videoRef.current.play().catch(e => console.log("Erro auto-play:", e));
             }
         } else {
             currentStream.getTracks().forEach(track => track.stop());
@@ -48,7 +51,6 @@ const SelfieCamera: React.FC<SelfieCameraProps> = ({ onCapture, onCancel }) => {
         if (isMounted) {
             const msg = err.name === 'NotAllowedError' ? "Permissão de câmera negada." : "Erro ao acessar câmera.";
             setError(msg);
-            // Alerta amigável para WebView/APK conforme solicitado
             alert(`${msg} O VeroPonto precisa de acesso à câmera para realizar a verificação por selfie. Verifique as permissões nas configurações do seu dispositivo.`);
         }
       }
@@ -77,7 +79,8 @@ const SelfieCamera: React.FC<SelfieCameraProps> = ({ onCapture, onCancel }) => {
     if (videoRef.current && canvasRef.current) {
       const context = canvasRef.current.getContext('2d');
       if (context) {
-        context.drawImage(videoRef.current, 0, 0, 480, 480);
+        // Captura na resolução ideal
+        context.drawImage(videoRef.current, 0, 0, 720, 720);
         const dataUrl = canvasRef.current.toDataURL('image/jpeg', 0.8);
         setCapturedImg(dataUrl);
         setIsPhotoTaken(true);
@@ -115,16 +118,19 @@ const SelfieCamera: React.FC<SelfieCameraProps> = ({ onCapture, onCancel }) => {
           {!isPhotoTaken ? (
             <video 
               ref={videoRef} 
-              autoPlay 
-              muted
-              playsInline 
+              autoPlay={true}
+              muted={true}
+              playsInline={true}
+              controls={false}
+              // @ts-ignore
+              disablePictureInPicture={true}
               onLoadedMetadata={handleVideoLoaded}
               className="w-full h-full object-cover scale-x-[-1]"
             />
           ) : (
             <img src={capturedImg!} className="w-full h-full object-cover scale-x-[-1]" />
           )}
-          <canvas ref={canvasRef} width="480" height="480" className="hidden" />
+          <canvas ref={canvasRef} width="720" height="720" className="hidden" />
         </div>
       </div>
 
