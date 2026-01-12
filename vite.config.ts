@@ -10,7 +10,7 @@ export default defineConfig({
     minify: 'esbuild'
   },
   define: {
-    // Injeção da chave de API fornecida pelo usuário para o ambiente de produção
+    // Injeção da chave de API no objeto process.env global do navegador
     'process.env.API_KEY': JSON.stringify('AIzaSyD8fnNyRH7t5BKw6g4d7UxoMVho2HM66gY')
   }
 });

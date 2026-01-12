@@ -1,6 +1,6 @@
 
 import { GoogleGenAI } from "@google/genai";
-import { Sparkles, X, Send, Bot, User as UserIcon, Loader2, MapPin, ExternalLink, AlertTriangle } from 'lucide-react';
+import { Sparkles, X, Send, Loader2, ExternalLink } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import { User } from '../types';
 
@@ -25,9 +25,6 @@ const AIChat: React.FC<AIChatProps> = ({ user, isPro }) => {
   const [userCoords, setUserCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // A chave agora vem injetada via vite.config.ts
-  const apiKey = process.env.API_KEY;
-
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -48,8 +45,9 @@ const AIChat: React.FC<AIChatProps> = ({ user, isPro }) => {
     e?.preventDefault();
     if (!input.trim() || isLoading) return;
     
-    if (!apiKey) {
-      setMessages(prev => [...prev, { role: 'model', text: "Erro: Chave de API não configurada corretamente." }]);
+    // Verificação de segurança da chave
+    if (!process.env.API_KEY) {
+      setMessages(prev => [...prev, { role: 'model', text: "Erro: A chave de API não foi injetada corretamente no build." }]);
       return;
     }
 
@@ -60,49 +58,53 @@ const AIChat: React.FC<AIChatProps> = ({ user, isPro }) => {
     setIsLoading(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey });
+      // Inicialização rigorosa conforme documentação @google/genai
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
-      const apiContents = newHistory
-        .filter((m, idx) => !(idx === 0 && m.role === 'model')) 
-        .map(m => ({
-          role: m.role,
-          parts: [{ text: m.text }]
-        }));
+      // Formatação do conteúdo para o modelo gemini-3
+      const contents = newHistory.map(m => ({
+        role: m.role,
+        parts: [{ text: m.text }]
+      }));
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.0-flash-exp', // Modelo otimizado e rápido
-        contents: apiContents,
+        model: 'gemini-3-flash-preview',
+        contents: contents,
         config: {
-          systemInstruction: `Você é o "VeroPonto AI".
-          - Usuário: ${user.name} (${user.role})
-          - Domínio: RH, Ponto Eletrônico, Legislação Trabalhista Brasileira.
-          - Use Google Maps para localizar unidades quando solicitado.`,
-          tools: [{ googleMaps: {} }, { googleSearch: {} }],
-          toolConfig: userCoords ? {
-            retrievalConfig: {
-              latLng: {
-                latitude: userCoords.latitude,
-                longitude: userCoords.longitude
-              }
-            }
-          } : undefined
+          systemInstruction: `Você é o "VeroPonto AI". 
+          Contexto: Sistema de RH e Ponto Eletrônico. 
+          Usuário Atual: ${user.name} (${user.role}).
+          Instruções: Seja profissional, conciso e ajude com dúvidas sobre leis trabalhistas brasileiras ou uso do sistema.`,
+          tools: [{ googleSearch: {} }],
         },
       });
 
-      const responseText = response.text || "Não consegui processar essa informação agora.";
-      const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-      const links = groundingChunks
-        .map((chunk: any) => {
-          if (chunk.maps) return { title: chunk.maps.title || "Ver no Maps", uri: chunk.maps.uri };
-          if (chunk.web) return { title: chunk.web.title || "Saiba mais", uri: chunk.web.uri };
-          return null;
-        })
-        .filter(Boolean) as { title: string; uri: string }[];
+      const responseText = response.text || "Desculpe, não consegui processar sua mensagem agora.";
+      
+      // Extração de links de fundamentação (grounding)
+      const links: { title: string; uri: string }[] = [];
+      const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+      chunks.forEach((chunk: any) => {
+        if (chunk.web) links.push({ title: chunk.web.title || "Fonte externa", uri: chunk.web.uri });
+      });
 
-      setMessages(prev => [...prev, { role: 'model', text: responseText, links: links.length > 0 ? links : undefined }]);
+      setMessages(prev => [...prev, { 
+        role: 'model', 
+        text: responseText, 
+        links: links.length > 0 ? links : undefined 
+      }]);
+
     } catch (error: any) {
-      console.error("AI Error:", error);
-      setMessages(prev => [...prev, { role: 'model', text: "Erro na conexão com a inteligência artificial. Verifique sua chave ou tente novamente." }]);
+      console.error("Gemini API Error:", error);
+      let errorText = "Erro na conexão com a inteligência artificial.";
+      
+      if (error.message?.includes("401") || error.message?.includes("API key")) {
+        errorText = "Erro de autenticação: Chave de API inválida ou expirada.";
+      } else if (error.message?.includes("429")) {
+        errorText = "Limite de requisições excedido. Tente novamente em instantes.";
+      }
+
+      setMessages(prev => [...prev, { role: 'model', text: errorText }]);
     } finally {
       setIsLoading(false);
     }
@@ -135,8 +137,9 @@ const AIChat: React.FC<AIChatProps> = ({ user, isPro }) => {
                   {msg.text}
                   {msg.links && msg.links.length > 0 && (
                     <div className="mt-3 space-y-2">
+                      <p className="text-[8px] font-black uppercase text-slate-400 mb-1">Fontes:</p>
                       {msg.links.map((link, idx) => (
-                        <a key={idx} href={link.uri} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-2 bg-white dark:bg-white/5 rounded-xl text-indigo-500 font-bold text-[10px]">
+                        <a key={idx} href={link.uri} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-2 bg-white dark:bg-white/5 rounded-xl text-indigo-500 font-bold text-[10px] border border-slate-100 dark:border-white/5">
                           {link.title} <ExternalLink size={12} />
                         </a>
                       ))}
@@ -155,13 +158,13 @@ const AIChat: React.FC<AIChatProps> = ({ user, isPro }) => {
             )}
           </div>
 
-          <div className="p-4 border-t border-slate-100 dark:border-white/5">
+          <div className="p-4 border-t border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-slate-900/50">
             <form onSubmit={handleSendMessage} className="relative">
               <input 
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Pergunte algo..."
-                className="w-full pl-5 pr-12 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl text-xs font-bold outline-none"
+                className="w-full pl-5 pr-12 py-4 bg-white dark:bg-slate-800 rounded-2xl text-xs font-bold outline-none border border-slate-200 dark:border-white/5 focus:ring-2 focus:ring-indigo-500/20"
               />
               <button disabled={isLoading || !input.trim()} className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 bg-indigo-600 text-white rounded-xl shadow-lg disabled:opacity-50">
                 <Send size={16} />
@@ -171,7 +174,7 @@ const AIChat: React.FC<AIChatProps> = ({ user, isPro }) => {
         </div>
       )}
 
-      <button onClick={() => setIsOpen(!isOpen)} className={`w-14 h-14 rounded-2xl shadow-2xl flex items-center justify-center transition-all ${isPro ? 'bg-amber-500 text-black' : 'bg-indigo-600 text-white'}`}>
+      <button onClick={() => setIsOpen(!isOpen)} className={`w-14 h-14 rounded-2xl shadow-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 ${isPro ? 'bg-amber-500 text-black' : 'bg-indigo-600 text-white'}`}>
         {isOpen ? <X size={24} /> : <Sparkles size={24} />}
       </button>
     </div>
