@@ -1,21 +1,26 @@
 
 <!DOCTYPE html>
-<html lang="pt-BR" class="">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     
-    <!-- PWA Config & iOS Support -->
+    <!-- PWA Primary Meta Tags -->
+    <title>VeroPonto | Gestão de Jornada</title>
+    <meta name="description" content="Controle de ponto profissional com geolocalização e IA." />
+    <meta name="theme-color" content="#0a0f1a" />
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- iOS / Apple Support -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="VeroPonto" />
     <link rel="apple-touch-icon" href="/fingerprint.png" />
     
+    <!-- Favicon -->
     <link rel="icon" type="image/png" href="/fingerprint.png" />
-    <link rel="manifest" href="/manifest.json" />
-    
-    <meta name="theme-color" content="#0a0f1a" />
-    <title>VeroPonto | Gestão de Jornada</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -33,8 +38,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     
     <!-- Leaflet para Mapas -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
       body {
@@ -116,19 +121,39 @@
     <script type="module" src="/index.tsx"></script>
     
     <script>
+      // Registro otimizado do Service Worker
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/service-worker.js').then(reg => {
-            reg.addEventListener('updatefound', () => {
-              const newWorker = reg.installing;
-              newWorker.addEventListener('statechange', () => {
-                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  // Notifica o app React sobre a nova versão
-                  window.dispatchEvent(new CustomEvent('sw-update-available', { detail: reg }));
+          navigator.serviceWorker.register('/service-worker.js')
+            .then(registration => {
+              console.log('VeroPonto: Service Worker registrado com sucesso no escopo:', registration.scope);
+              
+              // Gerenciamento de atualizações
+              registration.onupdatefound = () => {
+                const installingWorker = registration.installing;
+                if (installingWorker) {
+                  installingWorker.onstatechange = () => {
+                    if (installingWorker.state === 'installed') {
+                      if (navigator.serviceWorker.controller) {
+                        // Nova versão disponível!
+                        window.dispatchEvent(new CustomEvent('sw-update-available', { detail: registration }));
+                      }
+                    }
+                  };
                 }
-              });
+              };
+            })
+            .catch(error => {
+              console.error('VeroPonto: Erro ao registrar Service Worker:', error);
             });
-          });
+        });
+
+        // Lógica para recarregar quando o novo worker assumir
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (refreshing) return;
+          refreshing = true;
+          window.location.reload();
         });
       }
     </script>

@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { StorageService } from '../services/storage';
+import { EmployeeRequest } from '../types';
 import { 
   FileText, 
   CheckCircle2, 
@@ -16,29 +17,17 @@ import {
   X
 } from 'lucide-react';
 
-interface Request {
-  id: string;
-  user_id: string;
-  user_name: string;
-  workspace_id: string;
-  type: string;
-  date: string;
-  description: string;
-  attachment: string;
-  status: 'pending' | 'approved' | 'rejected';
-  created_at: string;
-}
-
 interface AdminRequestsProps {
   workspaceId: string;
 }
 
 const AdminRequests: React.FC<AdminRequestsProps> = ({ workspaceId }) => {
-  const [requests, setRequests] = useState<Request[]>([]);
+  // Fix: Use EmployeeRequest from types instead of local Request to avoid type mismatch
+  const [requests, setRequests] = useState<EmployeeRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [viewingRequest, setViewingRequest] = useState<Request | null>(null);
+  const [viewingRequest, setViewingRequest] = useState<EmployeeRequest | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
@@ -49,6 +38,7 @@ const AdminRequests: React.FC<AdminRequestsProps> = ({ workspaceId }) => {
     setLoading(true);
     try {
       const data = await StorageService.getAdminRequests(workspaceId);
+      // Fix: Ensured state updates with correct type from StorageService
       setRequests(data || []);
     } catch (err) {
       console.error("Erro ao carregar solicitações:", err);
