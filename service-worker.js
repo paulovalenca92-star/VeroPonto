@@ -1,56 +1,35 @@
 
-const CACHE_NAME = 'veroponto-v1.4';
-const ASSETS_TO_CACHE = [
+const CACHE_NAME = 'veroponto-cache-v1';
+const ASSETS = [
   '/',
   '/index.html',
-  '/manifest.json'
+  '/manifest.json',
+  '/index.tsx'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
-    })
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
   );
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.filter((name) => name !== CACHE_NAME).map((name) => caches.delete(name))
-      );
-    })
+    caches.keys().then((keys) => Promise.all(
+      keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
+    ))
   );
   self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
-  // Ignora solicitações que não sejam GET e chamadas de API externas
-  if (event.request.method !== 'GET' || 
-      event.request.url.includes('supabase.co') || 
-      event.request.url.includes('googleapis.com')) {
-    return;
-  }
-
+  // Requisito mínimo para PWA instalável: ter um handler de fetch
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(event.request).then((networkResponse) => {
-        if (!networkResponse || networkResponse.status !== 200) {
-          return networkResponse;
-        }
-        // Opcional: Cachear novos recursos estáticos aqui se necessário
-        return networkResponse;
-      }).catch(() => {
-        // Fallback offline para navegação
-        if (event.request.mode === 'navigate') {
-          return caches.match('/');
-        }
-      });
+    caches.match(event.request).then((response) => {
+      return response || fetch(event.request);
+    }).catch(() => {
+      return caches.match('/');
     })
   );
 });
