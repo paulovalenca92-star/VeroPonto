@@ -46,7 +46,10 @@ const SelfieCamera: React.FC<SelfieCameraProps> = ({ onCapture, onCancel }) => {
       } catch (err: any) {
         console.error("Erro Câmera:", err);
         if (isMounted) {
-            setError(err.name === 'NotAllowedError' ? "Permissão de câmera negada." : "Erro ao acessar câmera.");
+            const msg = err.name === 'NotAllowedError' ? "Permissão de câmera negada." : "Erro ao acessar câmera.";
+            setError(msg);
+            // Alerta amigável para WebView/APK conforme solicitado
+            alert(`${msg} O VeroPonto precisa de acesso à câmera para realizar a verificação por selfie. Verifique as permissões nas configurações do seu dispositivo.`);
         }
       }
     }

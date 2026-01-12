@@ -3,7 +3,7 @@
   "short_name": "VeroPonto",
   "description": "Controle de ponto inteligente com geolocalização e IA.",
   "id": "veroponto-v1",
-  "start_url": "/?source=pwa",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0f1a",
   "theme_color": "#0a0f1a",
@@ -25,12 +25,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
-    },
-    {
-      "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAMAAABlST9MAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAABhWlDQ1BJQ0MgcHJvZmlsZQAAeJydks8LwjAMx78pS9Wp4sGD4mHOU0UvOnSDeCh48CDI/+9mY86hInS5vS9fXpInSfsD06pZ06ZZA6pZbeYTI7E0vhS9oYceunHULMtcZpIofA6vD+j997pM5vK5o0pScSIsKIs6X6XihGfFInRIsKAQat7nyvS8p0pScSL07qR8kFjR1YvQ38GCPu9pInEsXASUReW7rXy3la/FfK7+P1S0Z82SNo0VlIUKpY0NFeXy2eY3G59sfrLx0cZnm99seLTxwYaHDS82vL630fveRu6vD3K/v5Hb60Lub3dyu13IzeVOTrsLme4XNPrn/v7569L7X9/S7pY6F8rFh8I19m87X9z22T27u3vX7877p7u7e5/v98f79f76P9+X9/X6fR++z9Pnefqcp895/vN8fO7j876/H+/H57kPn8fnuQ8/r7P9uU8/r7X9vH9/38fr+H69ju/X6/h+fF7X9fP++Xkdj6fX8/p5fR+v78/r9fx6fS+vY/Y65pPj6fH4eH6Pj+f3+Hh9v76vj6fP8+v6eHq8v76f3/fj8fL8Xz+v9+P19Xm9rq/X8f38vj+fX6+P1/fzeL4fx/P1+HgeR8/j7X29Pa+n1/H0Pn7v9/X+vL4fz+f/AX637u0AAMAhAAA5S/8/2B0FAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgL0Bf3AAAbL6y3YAAAAASUVORK5CYII=",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
     }
   ],
   "screenshots": [

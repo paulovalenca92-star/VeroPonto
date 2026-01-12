@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { X, QrCode as QrIcon, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
@@ -70,10 +69,12 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onClose }) => {
         setStatus('error');
         if (err.name === 'NotAllowedError' || err.message?.includes('Permission')) {
            setErrorMessage("Acesso à câmera negado.");
+           alert("Permissão de câmera negada. O VeroPonto precisa de acesso à câmera para validar a unidade via QR Code. Verifique as permissões nas configurações do seu dispositivo.");
         } else if (err.name === 'NotFoundError') {
            setErrorMessage("Câmera não encontrada.");
         } else {
            setErrorMessage("Erro ao iniciar câmera.");
+           alert("Erro ao acessar a câmera. Certifique-se de que o dispositivo possui uma câmera traseira funcional e que as permissões foram concedidas.");
         }
       }
     };
