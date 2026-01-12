@@ -25,9 +25,8 @@ const AIChat: React.FC<AIChatProps> = ({ user, isPro }) => {
   const [userCoords, setUserCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Acessa a chave injetada pelo Vite via process.env.API_KEY (definido no vite.config.ts)
-  const API_KEY = (process.env as any).API_KEY || "";
-  const isApiKeyMissing = !API_KEY || API_KEY === "" || API_KEY === "undefined";
+  // Fix: Directly check process.env.API_KEY without exposing key management to the user
+  const isApiKeyMissing = !process.env.API_KEY || process.env.API_KEY === "" || process.env.API_KEY === "undefined";
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -50,7 +49,7 @@ const AIChat: React.FC<AIChatProps> = ({ user, isPro }) => {
     if (!input.trim() || isLoading) return;
     
     if (isApiKeyMissing) {
-      setMessages(prev => [...prev, { role: 'model', text: "Erro: Chave de API não detectada. Verifique se você adicionou 'API_KEY' nas variáveis de ambiente da Netlify e fez um novo deploy." }]);
+      setMessages(prev => [...prev, { role: 'model', text: "Erro: Chave de API não detectada no ambiente. Entre em contato com o suporte." }]);
       return;
     }
 
@@ -61,7 +60,8 @@ const AIChat: React.FC<AIChatProps> = ({ user, isPro }) => {
     setIsLoading(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: API_KEY });
+      // Fix: Use process.env.API_KEY directly for initialization as per SDK guidelines
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
       
       // Filtra histórico para garantir que a primeira mensagem seja do usuário (exigência da API)
       const apiContents = newHistory
@@ -76,7 +76,8 @@ const AIChat: React.FC<AIChatProps> = ({ user, isPro }) => {
       }
 
       const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        // Fix: Changed model to 'gemini-flash-latest' (2.5 series) to support the googleMaps tool
+        model: 'gemini-flash-latest',
         contents: apiContents,
         config: {
           systemInstruction: `Você é o "VeroPonto AI", assistente oficial do sistema VeroPonto.
@@ -97,6 +98,7 @@ const AIChat: React.FC<AIChatProps> = ({ user, isPro }) => {
         },
       });
 
+      // Fix: Correctly access .text property from GenerateContentResponse
       const responseText = response.text || "Entendido. Como posso ajudar mais?";
       const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
       const links = groundingChunks
@@ -110,7 +112,7 @@ const AIChat: React.FC<AIChatProps> = ({ user, isPro }) => {
       setMessages(prev => [...prev, { role: 'model', text: responseText, links: links.length > 0 ? links : undefined }]);
     } catch (error: any) {
       console.error("AI Error:", error);
-      let errorMsg = "Ocorreu um erro ao processar sua solicitação. Verifique se sua chave de API do Gemini está ativa e possui créditos/quota disponível.";
+      let errorMsg = "Ocorreu um erro ao processar sua solicitação. Verifique se sua chave de API do Gemini está ativa.";
       if (error.message?.includes("API_KEY_INVALID")) errorMsg = "Chave de API inválida.";
       
       setMessages(prev => [...prev, { role: 'model', text: errorMsg }]);
@@ -146,7 +148,7 @@ const AIChat: React.FC<AIChatProps> = ({ user, isPro }) => {
               <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/40 rounded-2xl flex items-start gap-3">
                 <AlertTriangle className="text-red-600 shrink-0" size={16} />
                 <p className="text-[10px] font-bold text-red-800 dark:text-red-400 uppercase tracking-wider">
-                  Netlify: Variável API_KEY não configurada corretamente.
+                  Configuração: Variável API_KEY não configurada no ambiente.
                 </p>
               </div>
             )}

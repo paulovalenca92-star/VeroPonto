@@ -1,52 +1,47 @@
 
-const CACHE_NAME = 'veroponto-v3';
-// Cache inicial do shell do aplicativo
-const STATIC_ASSETS = [
+const CACHE_NAME = 'veroponto-pwa-v1';
+const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/icon.svg'
+  '/fingerprint.png',
+  'https://cdn.tailwindcss.com',
+  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
+  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE))
   );
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((names) => {
+    caches.keys().then((keys) => {
       return Promise.all(
-        names.map((name) => {
-          if (name !== CACHE_NAME) return caches.delete(name);
-        })
+        keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))
       );
     })
   );
   self.clients.claim();
 });
 
+self.addEventListener('message', (event) => {
+  if (event.data === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
-
-  // Ignora APIs externas
-  if (!url.origin.includes(self.location.origin)) return;
-
-  // Estratégia Stale-While-Revalidate para arquivos estáticos
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match('/'))
+    );
+    return;
+  }
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const fetchPromise = fetch(event.request).then((response) => {
-        // Atualiza o cache com a versão nova
-        if (response && response.status === 200 && response.type === 'basic') {
-          const toCache = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, toCache));
-        }
-        return response;
-      });
-      // Retorna o cache se existir, senão espera a rede
-      return cached || fetchPromise;
-    })
+    caches.match(event.request).then((res) => res || fetch(event.request))
   );
 });

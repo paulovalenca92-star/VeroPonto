@@ -1,31 +1,24 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { User, TimeRecord, PunchType, Location } from '../types';
 import { StorageService } from '../services/storage';
 import SelfieCamera from './SelfieCamera';
 import Scanner from './Scanner';
+import RecordDetailsModal from './RecordDetailsModal';
 import { 
   History, 
-  CheckCircle2, 
   ArrowUpCircle, 
   ArrowDownCircle,
   Clock,
-  MapPin,
   Loader2,
   Camera,
   AlertTriangle,
-  Locate,
   QrCode,
-  Smartphone,
   X,
-  Navigation,
   ChevronDown,
   ShieldCheck,
-  Award,
-  ChevronRight,
-  Info,
   User as UserIcon,
-  ExternalLink
+  Fingerprint
 } from 'lucide-react';
 
 interface EmployeeDashboardProps {
@@ -59,6 +52,18 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user, isPro }) =>
   const [distanceInfo, setDistanceInfo] = useState<{ meters: number; isFar: boolean } | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<TimeRecord | null>(null);
 
+  const loadUserRecords = useCallback(async () => {
+    setLoadingHistory(true);
+    try {
+      const userRecords = await StorageService.getRecords(user.workspaceId, user.id);
+      setRecords(userRecords || []);
+    } catch (e) {
+      console.error("Erro ao carregar histórico:", e);
+    } finally {
+      setLoadingHistory(false);
+    }
+  }, [user.workspaceId, user.id]);
+
   useEffect(() => {
     loadUserRecords();
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -79,16 +84,9 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user, isPro }) =>
     getInitialGPS();
 
     return () => clearInterval(timer);
-  }, [user.id]);
+  }, [user.id, loadUserRecords]);
 
-  const loadUserRecords = async () => {
-    setLoadingHistory(true);
-    const userRecords = await StorageService.getRecords(user.workspaceId, user.id);
-    setRecords(userRecords);
-    setLoadingHistory(false);
-  };
-
-  const getPreciseLocation = (): Promise<GeolocationPosition> => {
+  const getPreciseLocation = useCallback((): Promise<GeolocationPosition> => {
     return new Promise((resolve, reject) => {
       navigator.geolocation.getCurrentPosition(resolve, (err) => {
         navigator.geolocation.getCurrentPosition(resolve, reject, {
@@ -102,7 +100,7 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user, isPro }) =>
         maximumAge: 0
       });
     });
-  };
+  }, []);
 
   const handleStartQRScan = () => {
     setMessage(null);
@@ -117,35 +115,36 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user, isPro }) =>
     setIsCapturing(true);
   };
 
-  const handleScanSuccess = async (decodedText: string) => {
-    const locations = await StorageService.getLocations(user.workspaceId);
-    const foundLocation = locations.find(l => l.code === decodedText || l.id === decodedText);
+  const handleScanSuccess = useCallback(async (decodedText: string) => {
+    setIsScanning(false);
+    setIsProcessing(true);
     
-    if (foundLocation) {
-      setActiveLocation(foundLocation);
-      setIsScanning(false);
-      setIsProcessing(true);
-
-      try {
+    try {
+      const locations = await StorageService.getLocations(user.workspaceId);
+      const foundLocation = locations.find(l => l.code === decodedText || l.id === decodedText);
+      
+      if (foundLocation) {
+        setActiveLocation(foundLocation);
         if (foundLocation.latitude && foundLocation.longitude) {
-          const pos = await getPreciseLocation();
-          const dist = calculateDistance(pos.coords.latitude, pos.coords.longitude, foundLocation.latitude!, foundLocation.longitude!);
-          const isFar = dist > 400; 
-          setDistanceInfo({ meters: Math.round(dist), isFar });
+          try {
+            const pos = await getPreciseLocation();
+            const dist = calculateDistance(pos.coords.latitude, pos.coords.longitude, foundLocation.latitude!, foundLocation.longitude!);
+            const isFar = dist > 400; 
+            setDistanceInfo({ meters: Math.round(dist), isFar });
+          } catch (e) {}
         }
         setIsCapturing(true);
-      } catch (err) {
-        setIsCapturing(true); 
-      } finally {
-        setIsProcessing(false);
+      } else {
+        setMessage({ text: "Este QR Code não pertence à sua empresa.", type: 'error' });
       }
-    } else {
-      setMessage({ text: "Este QR Code não pertence à sua empresa.", type: 'error' });
-      setIsScanning(false);
+    } catch (err) {
+      setMessage({ text: "Erro ao validar unidade.", type: 'error' });
+    } finally {
+      setIsProcessing(false);
     }
-  };
+  }, [user.workspaceId, getPreciseLocation]);
 
-  const finalizePunch = async (selfieBase64: string) => {
+  const finalizePunch = useCallback(async (selfieBase64: string) => {
     setIsCapturing(false);
     setIsProcessing(true);
     let coords: { latitude: number; longitude: number } | undefined;
@@ -181,18 +180,20 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user, isPro }) =>
       await StorageService.addRecord(newRecord);
       await loadUserRecords();
       setMessage({ text: `Ponto de ${punchType === 'entry' ? 'Entrada' : 'Saída'} confirmado!`, type: 'success' });
-    } catch (err) { 
-      setMessage({ text: "Erro ao salvar. Verifique sua conexão.", type: 'error' }); 
+    } catch (err: any) { 
+      console.error("Erro ao salvar ponto:", err);
+      setMessage({ text: "Erro ao salvar o ponto. Verifique sua internet.", type: 'error' }); 
     } finally { 
       setIsProcessing(false); 
       setActiveLocation(null); 
       setDistanceInfo(null); 
-      setTimeout(() => setMessage(null), 5000); 
+      setTimeout(() => setMessage(null), 6000); 
     }
-  };
+  }, [user, activeLocation, distanceInfo, getPreciseLocation, loadUserRecords]);
 
   return (
-    <div className="max-w-md mx-auto flex flex-col gap-6 animate-in fade-in duration-500 pb-12">
+    <div className="max-w-md mx-auto flex flex-col gap-6 animate-in fade-in duration-500 pb-24">
+      
       <div className={`bg-white dark:bg-slate-900 rounded-[3rem] p-8 shadow-sm border border-slate-100 dark:border-white/5 text-center relative overflow-hidden transition-all ${isPro ? 'ring-2 ring-amber-500/20' : ''}`}>
         <div className={`absolute top-0 left-0 right-0 h-1 ${isPro ? 'bg-gradient-to-r from-amber-400 via-orange-500 to-amber-400' : 'bg-indigo-600'}`}></div>
         
@@ -209,17 +210,10 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user, isPro }) =>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 text-[9px] font-bold uppercase tracking-wide border border-emerald-100 dark:border-emerald-500/20">
                     <ShieldCheck size={10} /> GPS Vinculado
                 </span>
-            ) : gpsError ? (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 dark:bg-red-500/10 text-red-600 text-[9px] font-bold uppercase tracking-wide border border-red-100 dark:border-red-500/20">
-                    <AlertTriangle size={10} /> {gpsError}
-                </span>
             ) : (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-600 text-[9px] font-bold uppercase tracking-wide border border-amber-100 dark:border-amber-500/20 animate-pulse">
-                    <Loader2 size={10} className="animate-spin" /> Aguardando Permissão GPS
+                    <Loader2 size={10} className="animate-spin" /> GPS Localizando...
                 </span>
-            )}
-            {!currentCoords && !gpsError && (
-              <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1"><Info size={8}/> Clique em "Permitir" no aviso do navegador</p>
             )}
         </div>
       </div>
@@ -266,6 +260,7 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user, isPro }) =>
           <h3 className="font-black text-slate-400 text-[10px] uppercase tracking-widest flex items-center gap-2">
             <History size={12} /> Últimos Registros
           </h3>
+          {loadingHistory && <Loader2 size={12} className="animate-spin text-indigo-500" />}
         </div>
         
         <div className="divide-y divide-slate-50 dark:divide-white/5">
@@ -317,48 +312,11 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user, isPro }) =>
       {isCapturing && <SelfieCamera onCapture={finalizePunch} onCancel={() => { setIsCapturing(false); setActiveLocation(null); setDistanceInfo(null); }} />}
 
       {selectedRecord && (
-        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-           <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] w-full max-w-[350px] overflow-hidden shadow-2xl relative flex flex-col border border-white/5">
-              <div className="p-5 border-b border-slate-50 dark:border-white/5 flex justify-between items-center">
-                  <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Detalhes do Ponto</h4>
-                  <button onClick={() => setSelectedRecord(null)} className="p-2 text-slate-400 hover:text-slate-600 transition-colors"><X size={20}/></button>
-              </div>
-              <div className="p-6 text-center space-y-5">
-                 <div className="w-24 h-24 bg-slate-100 dark:bg-slate-800 rounded-3xl mx-auto flex items-center justify-center overflow-hidden border-2 border-white dark:border-slate-700 shadow-lg">
-                    {selectedRecord.photo ? <img src={selectedRecord.photo} className="w-full h-full object-cover" /> : <UserIcon className="text-slate-300 dark:text-slate-600" size={32} />}
-                 </div>
-                 <div>
-                    <h2 className="text-3xl font-black text-slate-800 dark:text-white">
-                        {new Date(selectedRecord.timestamp).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}
-                    </h2>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                        {new Date(selectedRecord.timestamp).toLocaleDateString('pt-BR', {day:'2-digit', month:'long'})}
-                    </p>
-                 </div>
-                 <div className="bg-slate-50 dark:bg-white/5 rounded-2xl p-4 text-left space-y-3">
-                    <div className="grid grid-cols-2 gap-2">
-                         <div>
-                            <p className="text-[8px] font-black uppercase text-slate-400 dark:text-slate-600 tracking-widest mb-1">Colaborador</p>
-                            <p className="text-xs font-black text-slate-700 dark:text-slate-200 truncate">{selectedRecord.userName}</p>
-                         </div>
-                         <div>
-                            <p className="text-[8px] font-black uppercase text-slate-400 dark:text-slate-600 tracking-widest mb-1">Matrícula</p>
-                            <p className="text-xs font-black text-slate-700 dark:text-slate-200">{selectedRecord.employeeId}</p>
-                         </div>
-                    </div>
-                    <div>
-                        <p className="text-[8px] font-black uppercase text-slate-400 dark:text-slate-600 tracking-widest mb-1">Localização</p>
-                        <p className="text-xs font-black text-slate-700 dark:text-slate-200">{selectedRecord.locationName}</p>
-                    </div>
-                 </div>
-                 {selectedRecord.coords && (
-                    <a href={`https://www.google.com/maps?q=${selectedRecord.coords.latitude},${selectedRecord.coords.longitude}`} target="_blank" className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/20">
-                        Ver no Mapa <ExternalLink size={14}/>
-                    </a>
-                 )}
-              </div>
-           </div>
-        </div>
+        <RecordDetailsModal 
+          record={selectedRecord} 
+          onClose={() => setSelectedRecord(null)} 
+          isPro={isPro}
+        />
       )}
     </div>
   );

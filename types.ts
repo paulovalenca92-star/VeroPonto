@@ -7,8 +7,11 @@ export interface User {
   name: string;
   role: UserRole;
   employeeId: string;
-  workspaceId: string; // Vínculo com a empresa
+  workspaceId: string;
   createdAt: number;
+  isPremium?: boolean;
+  planType?: string;
+  premiumUntil?: number;
 }
 
 export type PunchType = 'entry' | 'exit';
@@ -34,11 +37,25 @@ export interface Location {
   id: string;
   name: string;
   address?: string;
-  document?: string; // CPF ou CNPJ
+  document?: string;
   code: string;
   workspaceId: string;
   latitude?: number;
   longitude?: number;
+}
+
+// Added EmployeeRequest interface to handle justifications and medical certificates
+export interface EmployeeRequest {
+  id: string;
+  user_id: string;
+  user_name: string;
+  workspace_id: string;
+  type: string;
+  date: string;
+  description: string;
+  attachment?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: number;
 }
 
 export interface AuthState {

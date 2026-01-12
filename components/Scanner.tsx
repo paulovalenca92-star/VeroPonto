@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { X, QrCode as QrIcon, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
@@ -13,28 +14,25 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onClose }) => {
   
   const elementId = useRef(`qr-reader-${Math.random().toString(36).substr(2, 9)}`).current;
   const scannerRef = useRef<Html5Qrcode | null>(null);
-  const isMountedRef = useRef(true);
+  const isStarted = useRef(false);
+  const onScanRef = useRef(onScan);
+
+  // Mantém a referência da função callback sempre atualizada sem disparar o useEffect
+  useEffect(() => {
+    onScanRef.current = onScan;
+  }, [onScan]);
 
   useEffect(() => {
-    isMountedRef.current = true;
     let scannerInstance: Html5Qrcode | null = null;
 
     const startScanner = async () => {
-      await new Promise(r => setTimeout(r, 300));
+      // Trava de segurança para não iniciar duas vezes
+      if (isStarted.current) return;
       
-      if (!isMountedRef.current) return;
-
       const element = document.getElementById(elementId);
       if (!element) return;
 
       try {
-        try {
-            if (scannerRef.current) {
-                await scannerRef.current.stop();
-                scannerRef.current.clear();
-            }
-        } catch (e) { /* ignore cleanup errors */ }
-
         scannerInstance = new Html5Qrcode(elementId, {
             verbose: false,
             formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
@@ -51,59 +49,49 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onClose }) => {
             disableFlip: false
           },
           (decodedText) => {
-            if (isMountedRef.current) {
-               if (scannerInstance?.isScanning) {
-                   scannerInstance.pause(true);
-               }
-               onScan(decodedText);
+            // Executa o scan apenas se ainda estiver "ativo"
+            if (isStarted.current) {
+               isStarted.current = false;
+               scannerInstance?.stop().then(() => {
+                 onScanRef.current(decodedText);
+               }).catch(() => {
+                 onScanRef.current(decodedText);
+               });
             }
           },
-          () => { /* ignore frame errors */ }
+          () => { /* ignore frame errors para evitar logs excessivos */ }
         );
 
-        if (isMountedRef.current) {
-            setStatus('scanning');
-        } else {
-            cleanup(scannerInstance);
-        }
+        isStarted.current = true;
+        setStatus('scanning');
 
       } catch (err: any) {
         console.error("Scanner Start Error:", err);
-        if (isMountedRef.current) {
-          setStatus('error');
-          if (err.name === 'NotAllowedError' || err.message?.includes('Permission')) {
-             setErrorMessage("Acesso à câmera negado.");
-          } else if (err.name === 'NotFoundError') {
-             setErrorMessage("Câmera não encontrada.");
-          } else {
-             setErrorMessage("Erro ao iniciar câmera.");
-          }
+        setStatus('error');
+        if (err.name === 'NotAllowedError' || err.message?.includes('Permission')) {
+           setErrorMessage("Acesso à câmera negado.");
+        } else if (err.name === 'NotFoundError') {
+           setErrorMessage("Câmera não encontrada.");
+        } else {
+           setErrorMessage("Erro ao iniciar câmera.");
         }
       }
     };
 
-    startScanner();
-
-    const cleanup = async (instance: Html5Qrcode | null) => {
-        if (!instance) return;
-        try {
-            // @ts-ignore
-            if (instance.isScanning) await instance.stop();
-            instance.clear();
-        } catch (err: any) {
-            try { if (document.getElementById(elementId)) instance.clear(); } catch (e) {}
-        }
-    };
+    // Pequeno delay para garantir estabilidade do DOM antes da inicialização
+    const timer = setTimeout(startScanner, 300);
 
     return () => {
-      isMountedRef.current = false;
-      if (scannerRef.current) {
-          const instance = scannerRef.current;
-          scannerRef.current = null;
-          cleanup(instance);
+      clearTimeout(timer);
+      if (scannerRef.current && isStarted.current) {
+        const instance = scannerRef.current;
+        isStarted.current = false;
+        instance.stop()
+          .then(() => instance.clear())
+          .catch(err => console.debug("Scanner cleanup error (safe to ignore):", err));
       }
     };
-  }, [elementId, onScan]);
+  }, [elementId]); // Única dependência é o ID do elemento, fixo durante o ciclo de vida
 
   return (
     <div className="fixed inset-0 z-[2000] bg-slate-900/95 backdrop-blur-sm flex flex-col items-center justify-center p-6 animate-in fade-in duration-300">
@@ -151,7 +139,7 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onClose }) => {
           <div className="mt-6 space-y-2 text-center">
              <p className="text-white font-bold text-[10px] uppercase tracking-widest">Escaneie o QR Code</p>
              <p className="text-slate-400 text-[9px] font-medium leading-relaxed italic px-4">
-                Aponte para o código da unidade.
+                Aponte para o código da unidade fixado no local.
              </p>
           </div>
         </div>

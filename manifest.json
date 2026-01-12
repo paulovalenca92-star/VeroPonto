@@ -1,29 +1,26 @@
 
 {
-  "name": "VeroPonto - Gestão de Jornada",
+  "name": "VeroPonto",
   "short_name": "VeroPonto",
-  "description": "Controle de ponto inteligente com geolocalização e IA.",
+  "description": "Controle de ponto profissional com geolocalização e IA.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#0f172a",
+  "background_color": "#0a0f1a",
+  "theme_color": "#0a0f1a",
   "orientation": "portrait",
+  "scope": "/",
   "icons": [
     {
-      "src": "/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml"
-    },
-    {
-      "src": "/icon-192.png",
+      "src": "/fingerprint.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "maskable"
     },
     {
-      "src": "/icon-512.png",
+      "src": "/fingerprint.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }
