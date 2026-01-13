@@ -1,18 +1,24 @@
-
 import { createClient } from '@supabase/supabase-js';
 import { User, TimeRecord, Location, PunchType, EmployeeRequest } from '../types';
 
 const supabaseUrl = 'https://ytwmspnmjlflzsxlpftd.supabase.co';
 const supabaseKey = 'sb_publishable_mzaDAXN1gLVl3Di5iK1_cQ_7FJhxjOI';
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  global: {
+    headers: {
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    }
+  }
+});
 
 export const StorageService = {
   getProfile: async (userId: string): Promise<User | null> => {
     try {
       const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
-      if (error) return null;
-      if (!data) return null;
+      if (error || !data) return null;
       return {
         id: data.id,
         name: data.name,
@@ -21,13 +27,9 @@ export const StorageService = {
         employeeId: data.employee_id || '',
         workspaceId: data.workspace_id,
         createdAt: data.created_at ? new Date(data.created_at).getTime() : Date.now(),
-        isPremium: data.is_premium || false,
-        planType: data.plan_type || 'free',
-        premiumUntil: data.premium_until ? new Date(data.premium_until).getTime() : null
+        isPremium: data.is_premium || false
       } as User;
-    } catch (err) {
-      return null;
-    }
+    } catch (err) { return null; }
   },
 
   getRecords: async (workspaceId: string, userId?: string): Promise<TimeRecord[]> => {
@@ -43,15 +45,13 @@ export const StorageService = {
         employeeId: r.employee_id,
         workspaceId: r.workspace_id,
         type: r.type,
-        timestamp: isNaN(Number(r.timestamp)) ? new Date(r.timestamp).getTime() : Number(r.timestamp),
+        timestamp: Number(r.timestamp),
         locationCode: r.location_code,
         locationName: r.location_name,
         photo: r.photo,
         coords: (r.coords_lat && r.coords_lng) ? { latitude: r.coords_lat, longitude: r.coords_lng } : undefined
-      })) as TimeRecord[];
-    } catch (err) {
-      return [];
-    }
+      })) as any[];
+    } catch (err) { return []; }
   },
 
   addRecord: async (record: TimeRecord) => {
@@ -76,24 +76,10 @@ export const StorageService = {
 
   getLastRecord: async (workspaceId: string, userId: string): Promise<TimeRecord | null> => {
     try {
-      const { data, error } = await supabase
-        .from('time_records')
-        .select('*')
-        .eq('workspace_id', workspaceId)
-        .eq('user_id', userId)
-        .order('timestamp', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      const { data, error } = await supabase.from('time_records').select('*').eq('workspace_id', workspaceId).eq('user_id', userId).order('timestamp', { ascending: false }).limit(1).maybeSingle();
       if (error || !data) return null;
-      return {
-        id: data.id,
-        userId: data.user_id,
-        type: data.type,
-        timestamp: isNaN(Number(data.timestamp)) ? new Date(data.timestamp).getTime() : Number(data.timestamp),
-      } as any;
-    } catch (e) {
-      return null;
-    }
+      return { type: data.type, timestamp: Number(data.timestamp) } as any;
+    } catch (e) { return null; }
   },
 
   getUsers: async (workspaceId: string): Promise<User[]> => {
@@ -110,9 +96,7 @@ export const StorageService = {
         createdAt: u.created_at ? new Date(u.created_at).getTime() : Date.now(),
         isPremium: u.is_premium || false
       })) as User[];
-    } catch (e) {
-      return [];
-    }
+    } catch (e) { return []; }
   },
 
   saveUser: async (user: User) => {
@@ -123,15 +107,13 @@ export const StorageService = {
       role: user.role,
       employee_id: user.employeeId,
       workspace_id: user.workspaceId,
-      is_premium: false,
-      plan_type: 'free'
+      is_premium: true
     });
     if (error) throw error;
   },
 
   deleteUser: async (id: string) => {
-    const { error } = await supabase.from('profiles').delete().eq('id', id);
-    if (error) throw error;
+    await supabase.from('profiles').delete().eq('id', id);
   },
 
   getLocations: async (workspaceId: string): Promise<Location[]> => {
@@ -148,9 +130,7 @@ export const StorageService = {
         latitude: l.latitude,
         longitude: l.longitude
       })) as Location[];
-    } catch (e) {
-      return [];
-    }
+    } catch (e) { return []; }
   },
   
   saveLocation: async (loc: Omit<Location, 'id'>) => {
@@ -166,80 +146,46 @@ export const StorageService = {
     if (error) throw error; 
   },
 
-  deleteLocation: async (id: string) => {
-    const { error } = await supabase.from('locations').delete().eq('id', id);
+  updateLocation: async (id: string, loc: Partial<Location>) => {
+    const { error } = await supabase.from('locations').update({
+      name: loc.name,
+      address: loc.address,
+      document: loc.document,
+      latitude: loc.latitude,
+      longitude: loc.longitude
+    }).eq('id', id);
     if (error) throw error;
   },
 
-  // Fix: Implemented getUserRequests to fetch requests for a specific employee
+  deleteLocation: async (id: string) => {
+    await supabase.from('locations').delete().eq('id', id);
+  },
+
   getUserRequests: async (userId: string): Promise<EmployeeRequest[]> => {
     try {
-      const { data, error } = await supabase
-        .from('employee_requests')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+      const { data, error } = await supabase.from('employee_requests').select('*').eq('user_id', userId).order('created_at', { ascending: false });
       if (error) return [];
-      return (data || []).map(r => ({
-        id: r.id,
-        user_id: r.user_id,
-        user_name: r.user_name,
-        workspace_id: r.workspace_id,
-        type: r.type,
-        date: r.date,
-        description: r.description,
-        attachment: r.attachment,
-        status: r.status,
-        created_at: new Date(r.created_at).getTime()
-      })) as EmployeeRequest[];
-    } catch (e) {
-      return [];
-    }
+      return (data || []).map(r => ({ ...r, created_at: new Date(r.created_at).getTime() })) as any;
+    } catch (e) { return []; }
   },
 
-  // Fix: Implemented getAdminRequests to fetch all requests for a workspace
   getAdminRequests: async (workspaceId: string): Promise<EmployeeRequest[]> => {
     try {
-      const { data, error } = await supabase
-        .from('employee_requests')
-        .select('*')
-        .eq('workspace_id', workspaceId)
-        .order('created_at', { ascending: false });
+      const { data, error } = await supabase.from('employee_requests').select('*').eq('workspace_id', workspaceId).order('created_at', { ascending: false });
       if (error) return [];
-      return (data || []).map(r => ({
-        id: r.id,
-        user_id: r.user_id,
-        user_name: r.user_name,
-        workspace_id: r.workspace_id,
-        type: r.type,
-        date: r.date,
-        description: r.description,
-        attachment: r.attachment,
-        status: r.status,
-        created_at: new Date(r.created_at).getTime()
-      })) as EmployeeRequest[];
-    } catch (e) {
-      return [];
-    }
+      return (data || []).map(r => ({ ...r, created_at: new Date(r.created_at).getTime() })) as any;
+    } catch (e) { return []; }
   },
 
-  // Fix: Implemented uploadDocument to handle file uploads to Supabase Storage
   uploadDocument: async (userId: string, file: File): Promise<string> => {
     const fileName = `${userId}/${Date.now()}_${file.name}`;
-    const { error: uploadError } = await supabase.storage
-      .from('documents')
-      .upload(fileName, file);
-    if (uploadError) throw uploadError;
-    
-    const { data: { publicUrl } } = supabase.storage
-      .from('documents')
-      .getPublicUrl(fileName);
+    await supabase.storage.from('documents').upload(fileName, file);
+    const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(fileName);
     return publicUrl;
   },
 
-  // Fix: Implemented submitRequest to save a new request in the database
   submitRequest: async (request: any) => {
-    const { error } = await supabase.from('employee_requests').insert({
+    await supabase.from('employee_requests').insert({
       user_id: request.user_id,
       user_name: request.user_name,
       workspace_id: request.workspace_id,
@@ -249,38 +195,23 @@ export const StorageService = {
       attachment: request.arquivo_url,
       status: 'pending'
     });
-    if (error) throw error;
   },
 
-  // Fix: Implemented updateRequestStatus for admins to approve or reject requests
   updateRequestStatus: async (id: string, status: 'approved' | 'rejected') => {
-    const { error } = await supabase
-      .from('employee_requests')
-      .update({ status })
-      .eq('id', id);
-    if (error) throw error;
+    await supabase.from('employee_requests').update({ status }).eq('id', id);
   },
 
   exportToCSV: (records: TimeRecord[]) => {
-    const headers = ['Nome', 'Matrícula', 'Tipo', 'Data', 'Hora', 'Local', 'Latitude', 'Longitude'];
+    const headers = ['Nome', 'Matrícula', 'Tipo', 'Data', 'Hora', 'Local'];
     const rows = records.map(r => {
       const date = new Date(r.timestamp);
-      return [
-          r.userName, 
-          r.employeeId, 
-          r.type === 'entry' ? 'Entrada' : 'Saída', 
-          date.toLocaleDateString(), 
-          date.toLocaleTimeString(), 
-          r.locationName,
-          r.coords?.latitude || '',
-          r.coords?.longitude || ''
-      ];
+      return [r.userName, r.employeeId, r.type === 'entry' ? 'Entrada' : 'Saída', date.toLocaleDateString(), date.toLocaleTimeString(), r.locationName];
     });
     const csvContent = "\uFEFF" + [headers, ...rows].map(e => e.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `ponto_export_${Date.now()}.csv`;
+    link.download = `ponto_${Date.now()}.csv`;
     link.click();
   }
 };

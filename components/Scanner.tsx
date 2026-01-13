@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { X, QrCode as QrIcon, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 
@@ -16,99 +16,93 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onClose }) => {
   const isStarted = useRef(false);
   const onScanRef = useRef(onScan);
 
-  // Mantém a referência da função callback sempre atualizada sem disparar o useEffect
   useEffect(() => {
     onScanRef.current = onScan;
   }, [onScan]);
 
-  useEffect(() => {
-    let scannerInstance: Html5Qrcode | null = null;
-    let observer: MutationObserver | null = null;
+  const startScanner = useCallback(async () => {
+    if (isStarted.current) return;
+    setStatus('initializing');
+    setErrorMessage(null);
+    
+    // Delay de 500ms essencial para que a WebView do Android libere o hardware após a permissão
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    const element = document.getElementById(elementId);
+    if (!element) return;
 
-    const startScanner = async () => {
-      if (isStarted.current) return;
+    try {
+      const scannerInstance = new Html5Qrcode(elementId, {
+          verbose: false,
+          formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
+      });
       
-      const element = document.getElementById(elementId);
-      if (!element) return;
+      scannerRef.current = scannerInstance;
 
-      try {
-        scannerInstance = new Html5Qrcode(elementId, {
-            verbose: false,
-            formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
-        });
-        
-        scannerRef.current = scannerInstance;
+      // Injeta atributos no vídeo via MutationObserver assim que a lib criar o elemento
+      const observer = new MutationObserver(() => {
+          const video = element.querySelector('video');
+          if (video) {
+              video.setAttribute('autoplay', 'true');
+              video.setAttribute('muted', 'true');
+              video.setAttribute('playsinline', 'true');
+              video.removeAttribute('controls');
+              // @ts-ignore
+              video.disablePictureInPicture = true;
+          }
+      });
+      observer.observe(element, { childList: true, subtree: true });
 
-        // Inicia a observação do DOM para injetar atributos no vídeo assim que ele for criado pela lib
-        observer = new MutationObserver(() => {
-            const video = element.querySelector('video');
-            if (video) {
-                video.setAttribute('autoplay', 'true');
-                video.setAttribute('muted', 'true');
-                video.setAttribute('playsinline', 'true');
-                video.removeAttribute('controls');
-                // @ts-ignore
-                video.disablePictureInPicture = true;
-            }
-        });
-        observer.observe(element, { childList: true, subtree: true });
+      await scannerInstance.start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1.0,
+          disableFlip: false,
+          // Força resolução 480p para evitar que a WebView do APK trave em telas pretas
+          videoConstraints: {
+            width: { ideal: 640 },
+            height: { ideal: 480 }
+          }
+        },
+        (decodedText) => {
+          if (isStarted.current) {
+             isStarted.current = false;
+             scannerInstance?.stop().then(() => {
+               onScanRef.current(decodedText);
+             }).catch(() => {
+               onScanRef.current(decodedText);
+             });
+          }
+        },
+        () => { /* ignore frame errors */ }
+      );
 
-        await scannerInstance.start(
-          { facingMode: "environment" },
-          {
-            fps: 10,
-            qrbox: { width: 250, height: 250 },
-            aspectRatio: 1.0,
-            disableFlip: false
-          },
-          (decodedText) => {
-            if (isStarted.current) {
-               isStarted.current = false;
-               scannerInstance?.stop().then(() => {
-                 onScanRef.current(decodedText);
-               }).catch(() => {
-                 onScanRef.current(decodedText);
-               });
-            }
-          },
-          () => { /* ignore frame errors */ }
-        );
+      isStarted.current = true;
+      setStatus('scanning');
 
-        isStarted.current = true;
-        setStatus('scanning');
+    } catch (err: any) {
+      console.error("Scanner APK Error:", err);
+      setStatus('error');
+      const msg = err.name === 'NotAllowedError' ? "Acesso negado. Verifique as permissões de câmera do Android." : "Erro ao carregar câmera de unidade.";
+      setErrorMessage(msg);
+    }
+  }, [elementId]);
 
-      } catch (err: any) {
-        console.error("Scanner Start Error:", err);
-        setStatus('error');
-        if (err.name === 'NotAllowedError' || err.message?.includes('Permission')) {
-           setErrorMessage("Acesso à câmera negado.");
-           alert("Permissão de câmera negada. O VeroPonto precisa de acesso à câmera para validar a unidade via QR Code. Verifique as permissões nas configurações do seu dispositivo.");
-        } else if (err.name === 'NotFoundError') {
-           setErrorMessage("Câmera não encontrada.");
-        } else {
-           setErrorMessage("Erro ao iniciar câmera.");
-           alert("Erro ao acessar a câmera. Certifique-se de que o dispositivo possui uma câmera traseira funcional e que as permissões foram concedidas.");
-        }
-      }
-    };
-
-    const timer = setTimeout(startScanner, 300);
-
+  useEffect(() => {
+    startScanner();
     return () => {
-      clearTimeout(timer);
-      if (observer) observer.disconnect();
       if (scannerRef.current && isStarted.current) {
         const instance = scannerRef.current;
         isStarted.current = false;
-        instance.stop()
-          .then(() => instance.clear())
-          .catch(err => console.debug("Scanner cleanup error:", err));
+        instance.stop().then(() => instance.clear()).catch(e => console.debug(e));
       }
     };
-  }, [elementId]);
+  }, [elementId, startScanner]);
 
   return (
-    <div className="fixed inset-0 z-[2000] bg-slate-900/95 backdrop-blur-sm flex flex-col items-center justify-center p-6 animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-[2000] bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center p-6 animate-in fade-in duration-300">
       <div className="w-full max-w-sm bg-white rounded-[3rem] overflow-hidden shadow-2xl relative">
         <div className="p-6 bg-indigo-600 text-white flex justify-between items-center">
           <div className="flex items-center gap-2">
@@ -124,16 +118,10 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onClose }) => {
           <div className="w-full flex-1 overflow-hidden rounded-[2rem] border-4 border-white/10 relative bg-slate-900 min-h-[250px]">
              <div id={elementId} className="w-full h-full bg-slate-900 rounded-[1.5rem] overflow-hidden"></div>
 
-             {status === 'initializing' && (
+             {(status === 'initializing') && (
                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white z-10 bg-slate-900 pointer-events-none">
                     <Loader2 size={32} className="animate-spin text-indigo-400" />
-                    <p className="text-[10px] font-black uppercase tracking-widest">Iniciando...</p>
-                 </div>
-             )}
-             
-             {status === 'scanning' && (
-                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                    <div className="w-48 h-48 border-2 border-indigo-500 rounded-2xl animate-pulse shadow-[0_0_20px_rgba(99,102,241,0.5)]"></div>
+                    <p className="text-[10px] font-black uppercase tracking-widest">Iniciando câmera...</p>
                  </div>
              )}
              
@@ -141,9 +129,9 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onClose }) => {
                 <div className="absolute inset-0 flex items-center justify-center p-6 bg-slate-900 z-20 text-center">
                     <div className="space-y-4">
                         <AlertCircle size={40} className="text-red-500 mx-auto" />
-                        <p className="text-white text-xs font-bold uppercase leading-relaxed">{errorMessage}</p>
-                        <button onClick={() => window.location.reload()} className="px-6 py-3 bg-white text-slate-900 rounded-xl font-black text-[10px] uppercase flex items-center gap-2 mx-auto hover:bg-slate-200 transition">
-                            <RefreshCw size={14} /> Recarregar
+                        <p className="text-white text-[10px] font-bold uppercase leading-relaxed px-4">{errorMessage}</p>
+                        <button onClick={startScanner} className="px-6 py-3 bg-white text-slate-900 rounded-xl font-black text-[10px] uppercase flex items-center gap-2 mx-auto">
+                            <RefreshCw size={14} /> Tentar Novamente
                         </button>
                     </div>
                 </div>

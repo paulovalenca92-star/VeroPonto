@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { User, TimeRecord, PunchType, Location } from '../types';
 import { StorageService } from '../services/storage';
@@ -18,7 +17,8 @@ import {
   ChevronDown,
   ShieldCheck,
   User as UserIcon,
-  Fingerprint
+  Fingerprint,
+  RefreshCw
 } from 'lucide-react';
 
 interface EmployeeDashboardProps {
@@ -52,8 +52,8 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user, isPro }) =>
   const [distanceInfo, setDistanceInfo] = useState<{ meters: number; isFar: boolean } | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<TimeRecord | null>(null);
 
-  const loadUserRecords = useCallback(async () => {
-    setLoadingHistory(true);
+  const loadUserRecords = useCallback(async (silent = false) => {
+    if (!silent) setLoadingHistory(true);
     try {
       const userRecords = await StorageService.getRecords(user.workspaceId, user.id);
       setRecords(userRecords || []);
@@ -68,6 +68,13 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user, isPro }) =>
     loadUserRecords();
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     
+    // Sincronização de foco para APK/WebView
+    const handleFocus = () => loadUserRecords(true);
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') loadUserRecords(true);
+    });
+
     const getInitialGPS = () => {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
@@ -83,7 +90,10 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user, isPro }) =>
     };
     getInitialGPS();
 
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [user.id, loadUserRecords]);
 
   const getPreciseLocation = useCallback((): Promise<GeolocationPosition> => {
@@ -182,7 +192,7 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user, isPro }) =>
       setMessage({ text: `Ponto de ${punchType === 'entry' ? 'Entrada' : 'Saída'} confirmado!`, type: 'success' });
     } catch (err: any) { 
       console.error("Erro ao salvar ponto:", err);
-      setMessage({ text: "Erro ao salvar o ponto. Verifique sua internet.", type: 'error' }); 
+      setMessage({ text: "Erro ao salvar o ponto. Verifique sua conexão.", type: 'error' }); 
     } finally { 
       setIsProcessing(false); 
       setActiveLocation(null); 
@@ -194,6 +204,16 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user, isPro }) =>
   return (
     <div className="max-w-md mx-auto flex flex-col gap-6 animate-in fade-in duration-500 pb-24">
       
+      {/* Overlay Bloqueante de Registro */}
+      {isProcessing && (
+        <div className="fixed inset-0 z-[9999] bg-black/40 backdrop-blur-sm flex items-center justify-center">
+          <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-2xl flex flex-col items-center gap-4">
+            <Loader2 size={40} className="text-indigo-600 animate-spin" />
+            <p className="text-xs font-black uppercase tracking-widest dark:text-white text-slate-800">Validando Jornada...</p>
+          </div>
+        </div>
+      )}
+
       <div className={`bg-white dark:bg-slate-900 rounded-[3rem] p-8 shadow-sm border border-slate-100 dark:border-white/5 text-center relative overflow-hidden transition-all ${isPro ? 'ring-2 ring-amber-500/20' : ''}`}>
         <div className={`absolute top-0 left-0 right-0 h-1 ${isPro ? 'bg-gradient-to-r from-amber-400 via-orange-500 to-amber-400' : 'bg-indigo-600'}`}></div>
         

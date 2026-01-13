@@ -1,5 +1,5 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { Camera, X, Check, AlertCircle } from 'lucide-react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { Camera, X, Check, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 
 interface SelfieCameraProps {
   onCapture: (base64Image: string) => void;
@@ -9,78 +9,74 @@ interface SelfieCameraProps {
 const SelfieCamera: React.FC<SelfieCameraProps> = ({ onCapture, onCancel }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [isInitializing, setIsInitializing] = useState(true);
   const [isPhotoTaken, setIsPhotoTaken] = useState(false);
   const [capturedImg, setCapturedImg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let currentStream: MediaStream | null = null;
-    let isMounted = true;
+  const startCamera = useCallback(async () => {
+    setIsInitializing(true);
+    setError(null);
+    
+    // Pequeno delay de 500ms para garantir que a WebView processe a permissão de hardware
+    await new Promise(resolve => setTimeout(resolve, 500));
 
-    async function startCamera() {
-      try {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          throw new Error("Câmera não suportada neste navegador.");
-        }
-
-        // Restrições otimizadas para APK/WebView conforme solicitado
-        const constraints = { 
-          video: { 
-            facingMode: 'user', 
-            width: { ideal: 1280 }, 
-            height: { ideal: 720 } 
-          }, 
-          audio: false 
-        };
-
-        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-        
-        if (isMounted) {
-            setStream(currentStream);
-            if (videoRef.current) {
-              videoRef.current.srcObject = currentStream;
-              // Força o play após atribuir o stream
-              videoRef.current.play().catch(e => console.log("Erro auto-play:", e));
-            }
-        } else {
-            currentStream.getTracks().forEach(track => track.stop());
-        }
-      } catch (err: any) {
-        console.error("Erro Câmera:", err);
-        if (isMounted) {
-            const msg = err.name === 'NotAllowedError' ? "Permissão de câmera negada." : "Erro ao acessar câmera.";
-            setError(msg);
-            alert(`${msg} O VeroPonto precisa de acesso à câmera para realizar a verificação por selfie. Verifique as permissões nas configurações do seu dispositivo.`);
-        }
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("Câmera não suportada ou permissão ausente.");
       }
-    }
 
-    startCamera();
+      // Resolução 480p (640x480) é a mais estável para WebViews em APKs (WebIntoApp)
+      const constraints = { 
+        video: { 
+          facingMode: 'user', 
+          width: { ideal: 640 }, 
+          height: { ideal: 480 } 
+        }, 
+        audio: false 
+      };
 
-    return () => {
-      isMounted = false;
-      if (currentStream) {
-        currentStream.getTracks().forEach(track => track.stop());
-      }
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      
       if (videoRef.current) {
-          videoRef.current.srcObject = null;
+        videoRef.current.srcObject = stream;
+        
+        // Atributos forçados programaticamente para garantir funcionamento no Android WebView
+        videoRef.current.setAttribute('autoplay', 'true');
+        videoRef.current.setAttribute('muted', 'true');
+        videoRef.current.setAttribute('playsinline', 'true');
+        
+        try {
+          // Garante que o vídeo comece a rodar
+          await videoRef.current.play();
+        } catch (e) {
+          console.warn("Auto-play interrompido pela WebView, tentando novamente...", e);
+        }
       }
-    };
+      setIsInitializing(false);
+    } catch (err: any) {
+      console.error("Erro Câmera APK:", err);
+      const msg = err.name === 'NotAllowedError' ? "Permissão negada. Ative a câmera nas configurações do Android." : "Erro ao carregar hardware da câmera.";
+      setError(msg);
+      setIsInitializing(false);
+    }
   }, []);
 
-  const handleVideoLoaded = () => {
-    if (videoRef.current) {
-        videoRef.current.play().catch(e => console.log("Play interrompido"));
-    }
-  };
+  useEffect(() => {
+    startCamera();
+    return () => {
+      if (videoRef.current?.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [startCamera]);
 
   const takePhoto = () => {
     if (videoRef.current && canvasRef.current) {
       const context = canvasRef.current.getContext('2d');
       if (context) {
-        // Captura na resolução ideal
-        context.drawImage(videoRef.current, 0, 0, 720, 720);
+        context.drawImage(videoRef.current, 0, 0, 640, 480);
         const dataUrl = canvasRef.current.toDataURL('image/jpeg', 0.8);
         setCapturedImg(dataUrl);
         setIsPhotoTaken(true);
@@ -88,33 +84,41 @@ const SelfieCamera: React.FC<SelfieCameraProps> = ({ onCapture, onCancel }) => {
     }
   };
 
-  const confirmPhoto = () => {
-    if (capturedImg) onCapture(capturedImg);
-  };
-
   if (error) {
     return (
-      <div className="fixed inset-0 z-[2000] bg-slate-900 flex flex-col items-center justify-center p-8 text-center">
-        <div className="bg-white/10 p-6 rounded-[2.5rem] border border-white/10 space-y-4 max-w-sm">
-          <AlertCircle size={48} className="text-red-400 mx-auto" />
-          <h3 className="text-white text-xl font-bold">Erro na Câmera</h3>
-          <p className="text-slate-400 text-sm leading-relaxed">{error}</p>
-          <button onClick={onCancel} className="w-full py-4 bg-white text-slate-900 rounded-2xl font-black text-sm">VOLTAR</button>
+      <div className="fixed inset-0 z-[2000] bg-slate-950 flex flex-col items-center justify-center p-8 text-center">
+        <div className="bg-white/5 p-8 rounded-[3rem] border border-white/10 space-y-6 max-w-sm shadow-2xl">
+          <AlertCircle size={48} className="text-red-500 mx-auto" />
+          <h3 className="text-white text-xl font-black">Câmera não responde</h3>
+          <p className="text-slate-400 text-sm font-medium leading-relaxed">{error}</p>
+          <div className="space-y-3 pt-2">
+            <button onClick={startCamera} className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all">
+              <RefreshCw size={16} /> Tentar Novamente
+            </button>
+            <button onClick={onCancel} className="w-full py-4 text-slate-500 font-black text-xs uppercase tracking-widest">Sair</button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-[2000] bg-slate-900 flex flex-col items-center justify-between py-12 px-6 overflow-hidden h-[100dvh]">
+    <div className="fixed inset-0 z-[2000] bg-slate-950 flex flex-col items-center justify-between py-12 px-6 overflow-hidden h-[100dvh]">
       <div className="text-center space-y-2 mt-4 safe-top">
         <h3 className="text-white text-2xl font-black tracking-tight">Selfie do Ponto</h3>
         <p className="text-indigo-200/60 text-sm font-medium">Enquadre seu rosto</p>
       </div>
 
-      <div className="relative w-[70vw] h-[70vw] max-w-[320px] max-h-[320px]">
+      <div className="relative w-[75vw] h-[75vw] max-w-[320px] max-h-[320px]">
+        {isInitializing && (
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-900 rounded-full border-4 border-white/5 animate-pulse">
+            <Loader2 size={40} className="text-indigo-500 animate-spin mb-3" />
+            <p className="text-[10px] font-black text-white/50 uppercase tracking-[0.2em]">Iniciando Câmera...</p>
+          </div>
+        )}
+        
         <div className="absolute inset-0 border-[4px] border-indigo-500/40 rounded-full z-10 animate-pulse"></div>
-        <div className="w-full h-full rounded-full overflow-hidden bg-slate-800 shadow-2xl relative border-4 border-white/5">
+        <div className="w-full h-full rounded-full overflow-hidden bg-slate-900 shadow-2xl relative border-4 border-white/5">
           {!isPhotoTaken ? (
             <video 
               ref={videoRef} 
@@ -124,24 +128,27 @@ const SelfieCamera: React.FC<SelfieCameraProps> = ({ onCapture, onCancel }) => {
               controls={false}
               // @ts-ignore
               disablePictureInPicture={true}
-              onLoadedMetadata={handleVideoLoaded}
               className="w-full h-full object-cover scale-x-[-1]"
             />
           ) : (
             <img src={capturedImg!} className="w-full h-full object-cover scale-x-[-1]" />
           )}
-          <canvas ref={canvasRef} width="720" height="720" className="hidden" />
+          <canvas ref={canvasRef} width="640" height="480" className="hidden" />
         </div>
       </div>
 
       <div className="w-full max-w-xs space-y-4 safe-bottom mb-4">
         {!isPhotoTaken ? (
-          <button onClick={takePhoto} className="w-full py-5 bg-white text-indigo-700 rounded-[2rem] font-black text-lg flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all">
+          <button 
+            disabled={isInitializing}
+            onClick={takePhoto} 
+            className="w-full py-5 bg-white text-indigo-700 rounded-[2rem] font-black text-lg flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all disabled:opacity-50"
+          >
             <Camera size={24} /> CAPTURAR
           </button>
         ) : (
           <div className="flex flex-col gap-3">
-            <button onClick={confirmPhoto} className="w-full py-5 bg-indigo-600 text-white rounded-[2rem] font-black text-lg flex items-center justify-center gap-2 shadow-lg">
+            <button onClick={() => onCapture(capturedImg!)} className="w-full py-5 bg-indigo-600 text-white rounded-[2rem] font-black text-lg flex items-center justify-center gap-2 shadow-lg">
               <Check size={24} /> CONFIRMAR
             </button>
             <button onClick={() => setIsPhotoTaken(false)} className="w-full py-3 text-slate-400 font-bold text-xs uppercase tracking-[0.2em]">

@@ -1,6 +1,5 @@
-
 import React, { useEffect, useState } from 'react';
-import { Lock, Sparkles, CreditCard, ShieldCheck, Check, Star, CalendarX } from 'lucide-react';
+import { Sparkles, Star, CalendarX, ShieldCheck } from 'lucide-react';
 import { User } from '../types';
 
 // ============================================================================
@@ -38,6 +37,11 @@ const PaywallLock: React.FC<PaywallLockProps> = ({ user, isPro }) => {
     }
   }, [isPro, user.createdAt]);
 
+  const handleOpenPayment = (url: string) => {
+    // No APK, window.open com _blank é o método mais estável para sair da WebView
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
   if (!isLocked) return null;
 
   return (
@@ -49,15 +53,15 @@ const PaywallLock: React.FC<PaywallLockProps> = ({ user, isPro }) => {
             <div className="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
                 <CalendarX size={28} className="text-red-500" />
             </div>
-            <h2 className="text-2xl font-black text-white tracking-tight">Período de Teste Encerrado</h2>
-            <p className="text-xs text-slate-400 font-medium mt-1 uppercase tracking-widest">Escolha um plano para continuar gerenciando</p>
+            <h2 className="text-2xl font-black text-white tracking-tight">Teste Encerrado</h2>
+            <p className="text-xs text-slate-400 font-medium mt-1 uppercase tracking-widest px-4">Escolha um plano para reativar o seu acesso administrativo</p>
         </div>
 
         <div className="p-6 space-y-4 overflow-y-auto custom-scrollbar">
             
             <div className="relative group">
                 <div className="absolute -inset-0.5 bg-gradient-to-r from-amber-500 to-orange-600 rounded-[1.8rem] opacity-75 blur-sm group-hover:opacity-100 transition duration-1000"></div>
-                <div className="relative bg-[#131b2e] rounded-[1.7rem] p-5 border border-amber-500/50 flex flex-col gap-3">
+                <div className="relative bg-[#131b2e] rounded-[1.7rem] p-5 border border-amber-500/50 flex flex-col gap-3 cursor-pointer" onClick={() => handleOpenPayment(LINK_ANUAL)}>
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-500 to-orange-500 text-black text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-lg flex items-center gap-1">
                         <Star size={10} fill="currentColor" /> Recomendado
                     </div>
@@ -72,41 +76,29 @@ const PaywallLock: React.FC<PaywallLockProps> = ({ user, isPro }) => {
                         <div className="text-right">
                             <p className="text-slate-400 text-[10px] line-through font-bold">R$ 598,80</p>
                             <p className="text-2xl font-black text-amber-400 tracking-tighter">R$ 562,80</p>
-                            <p className="text-[9px] text-slate-400 uppercase font-bold">/ano</p>
                         </div>
                     </div>
 
-                    <a 
-                      href={LINK_ANUAL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full py-4 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-black rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-amber-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-                    >
+                    <button className="w-full py-4 bg-gradient-to-r from-amber-400 to-orange-500 text-black rounded-xl font-black text-xs uppercase tracking-widest shadow-lg flex items-center justify-center gap-2">
                        Assinar Anual <Sparkles size={14} fill="black" />
-                    </a>
+                    </button>
                 </div>
             </div>
 
-            <div className="bg-white/5 rounded-[1.7rem] p-5 border border-white/5 hover:border-white/10 transition-all flex flex-col gap-3">
+            <div className="bg-white/5 rounded-[1.7rem] p-5 border border-white/5 hover:border-white/10 transition-all flex flex-col gap-3 cursor-pointer" onClick={() => handleOpenPayment(LINK_MENSAL)}>
                 <div className="flex justify-between items-center">
                     <div>
                         <h3 className="text-white font-black text-lg">Mensal</h3>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Flexibilidade Total</p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Flexibilidade</p>
                     </div>
                     <div className="text-right">
                         <p className="text-xl font-black text-white tracking-tighter">R$ 49,90</p>
-                        <p className="text-[9px] text-slate-400 uppercase font-bold">/mês</p>
                     </div>
                 </div>
 
-                <a 
-                  href={LINK_MENSAL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full py-4 bg-white/10 hover:bg-white/20 text-white border border-white/10 rounded-xl font-black text-xs uppercase tracking-widest active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-                >
+                <button className="w-full py-4 bg-white/10 text-white border border-white/10 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2">
                    Assinar Mensal
-                </a>
+                </button>
             </div>
 
             <div className="pt-2 text-center border-t border-white/5 mt-4">
@@ -115,7 +107,6 @@ const PaywallLock: React.FC<PaywallLockProps> = ({ user, isPro }) => {
                 </p>
             </div>
         </div>
-
       </div>
     </div>
   );
