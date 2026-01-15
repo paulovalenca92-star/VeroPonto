@@ -1,13 +1,11 @@
-const CACHE_NAME = 'geopoint-v1';
+
+const CACHE_NAME = 'geopoint-v2';
 const ASSETS = [
   '/',
   '/index.html',
-  '/manifest.json',
-  '/index.tsx',
-  '/App.tsx'
+  '/manifest.json'
 ];
 
-// Instala o Service Worker e guarda os arquivos no cache
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
@@ -17,7 +15,6 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Ativa o SW e limpa versões antigas
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -28,11 +25,9 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Responde às requisições usando o Cache quando estiver offline
 self.addEventListener('fetch', (event) => {
+  // O Chrome exige um handler de fetch para permitir a instalação
   event.respondWith(
-    fetch(event.request).catch(() => {
-      return caches.match(event.request);
-    })
+    fetch(event.request).catch(() => caches.match(event.request))
   );
 });

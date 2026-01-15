@@ -9,14 +9,14 @@
     <meta name="description" content="Controle de ponto profissional com geolocalização e IA." />
     
     <!-- PWA Config -->
-    <meta name="theme-color" content="#0a0f1a" />
+    <meta name="theme-color" content="#050505" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="GeoPoint" />
     <meta name="mobile-web-app-capable" content="yes" />
     
     <link rel="manifest" href="/manifest.json" />
-    <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAMAAABlST9MAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAABhWlDQ1BJQ0MgcHJvZmlsZQAAeJydks8LwjAMx78pS9Wp4sGD4mHOU0UvOnSDeCh48CDI/+9mY86hInS5vS9fXpInSfsD06pZ06ZZA6pZbeYTI7E0vhS9oYceunHULMtcZpIofA6vD+j997pM5vK5o0pScSIsKIs6X6XihGfFInRIsKAQat7nyvS8p0pScSL07qR8kFjR1YvQ38GCPu9pInEsXASUReW7rXy3la/FfK7+P1S0Z82SNo0VlIUKpY0NFeXy2eY3G59sfrLx0cZnm99seLTxwYaHDS82vL630fveRu6vD3K/v5Hb60Lub3dyu13IzeVOTrsLme4XNPrn/v7569L7X9/S7pY6F8rFh8I19m87X9z22T27u3vX7877p7u7e5/v98f79f76P9+X9/X6fR++z9Pnefqcp895/vN8fO7j876/H+/H57kPn8fnuQ8/r7P9uU8/r7X9vH9/38fr+H69ju/X6/h+fF7X9fP++Xkdj6fX8/p5fR+v78/r9fx6fS+vY/Y65pPj6fH4eH6Pj+f3+Hh9v76vj6fP8+v6eHq8v76f3/fj8fL8Xz+v9+P19Xm9rq/X8f38vj+fX6+P1/fzeL4fx/P1+HgeR8/j7X29Pa+n1/H0Pn7v9/X+vL4fz+f/AX637u0AAMAhAAA5S/8/2B0FAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgL0Bf3AAAbL6y3YAAAAASUVORK5CYII=" />
+    <link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAMAAABlST9MAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAABhWlDQ1BJQ0MgcHJvZmlsZQAAeJydks8LwjAMx78pS9Wp4sGD4mHOU0UvOnSDeCh48CDI/+9mY86hInS5vS9fXpInSfsD06pZ06ZZA6pZbeYTI7E0vhS9oYceunHULMtcZpIofA6vD+j997pM5vK5o0pScSIsKIs6X6XihGfFInRIsKAQat7nyvS8p0pScSL07qR8kFjR1YvQ38GCPu9pInEsXASUReW7rXy3la/FfK7+P1S0Z82SNo0VlIUKpY0NFeXy2eY3G59sfrLx0cZnm99seLTxwYaHDS82vL630fveRu6vD3K/v5Hb60Lub3dyu13IzeVOTrsLme4XNPrn/v7569L7X9/S7pY6F8rFh8I19m87X9z22T27u3vX7877p7u7e5/v98f79f76P9+X9/X6fR++z9Pnefqcp895/vN8fO7j876/H+/H57kPn8fnuQ8/r7P9uU8/r7X9vH9/38fr+H69ju/X6/h+fF7X9fP++Xkdj6fX8/p5fR+v78/r9fx6fS+vY/Y65pPj6fH4eH6Pj+f3+Hh9v76vj6fP8+v6eHq8v76f3/fj8fL8Xz+v9+P19Xm9rq/X8f38vj+fX6+P1/fzeL4fx/P1+HgeR8/j7X29Pa+n1/H0Pn7v9/X+vL4fz+f/AX637u0AAAAzUExURQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKH04isAAAALdFJOUwAECBAhP0BBX2BvgvC9eQAAAAlwSFlzAAALEwAACxMBAJqcGAAAAWJJREFUeNrt29tuwjAQBdBkg6X78P//bS9oIVKqOnYSt5Y8D0XyYaI400VpCgoKCgoKCgoKCi8mO+37vWpP20697T7vS9W9N9v7uI379vG91N5G/4Fv7R/gGf9B616f73GvX86+X/W9vnt9XvS97XvT97nvU9+Xvs99X/q+9H3p+9L3pe9L35e+L31f+r70fen70vel70vfl74vfV/6vvR96fvS96XvS9+Xvi99X/q+9H3p+9L3pe9L35e+L31f+r70fen70vel70vfl74vfV/6vvR96fvS96XvS9+Xvi99X/q+9H3p+9L3pe9L35e+L31f+r70fen70vel70vfl74vfV/6vvR96fvS96XvS9+Xvi99X/q+9H3p+9L3pe9L35e+L31f+r70fen70vel70vfl74vfV/6vvR96fvS96XvS9+Xvi99X/q+9H3p+9L3pe9L35e+L31f+r70fen70vel70vfl74vfV/6Xp96p9WnPhXj8vT6eC9VvTf1vK9V9956r6CgoKCgoKCgoKDwrPkN8PMA8Y4YvjUAAAAASUVORK5CYII=" />
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -24,14 +24,12 @@
         darkMode: 'class',
         theme: {
           extend: {
-            fontFamily: {
-              sans: ['Inter', 'sans-serif'],
-            },
+            fontFamily: { sans: ['Inter', 'sans-serif'] },
             colors: {
               brand: {
-                primary: '#14b8a6', // Teal
-                secondary: '#6366f1', // Indigo
-                dark: '#0a0f1a',
+                primary: '#14b8a6', 
+                secondary: '#6366f1',
+                dark: '#050505',
               }
             }
           }
@@ -39,7 +37,6 @@
       }
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -50,25 +47,10 @@
         color: #1e293b;
         -webkit-tap-highlight-color: transparent;
         overscroll-behavior-y: none;
-        transition: background-color 0.3s ease;
       }
-      html.dark body {
-        background-color: #0a0f1a;
-        color: #f8fafc;
-      }
-      ::-webkit-scrollbar { width: 6px; height: 6px; }
-      ::-webkit-scrollbar-track { background: transparent; }
-      ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-      .dark ::-webkit-scrollbar-thumb { background: #1e293b; }
+      html.dark body { background-color: #050505; color: #f8fafc; }
       .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
-      
-      .dark .leaflet-tile {
-        filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
-      }
-      .leaflet-container {
-        border-radius: 2rem;
-        z-index: 10;
-      }
+      .dark .leaflet-tile { filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7); }
     </style>
 <script type="importmap">
 {
@@ -90,17 +72,12 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
-    
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('service-worker.js')
-            .then(reg => {
-              console.log('GeoPoint: Service Worker registrado');
-            })
-            .catch(err => {
-              console.error('GeoPoint: Erro no Service Worker:', err);
-            });
+          navigator.serviceWorker.register('/service-worker.js')
+            .then(() => console.log('GeoPoint: Service Worker OK'))
+            .catch(err => console.error('GeoPoint SW Error:', err));
         });
       }
     </script>

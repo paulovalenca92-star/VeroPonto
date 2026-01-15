@@ -14,10 +14,9 @@ import {
   X, 
   Moon, 
   Sun, 
-  ArrowLeft,
   RefreshCw,
-  MapPin,
-  Clock
+  Fingerprint,
+  Shield
 } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -85,7 +84,7 @@ const App: React.FC = () => {
 
   if (auth.loading) {
     return (
-      <div className="min-h-[100dvh] bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
+      <div className="min-h-[100dvh] bg-[#050505] flex items-center justify-center">
         <Loader2 size={40} className="text-teal-600 animate-spin" />
       </div>
     );
@@ -101,7 +100,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className={`min-h-[100dvh] transition-colors ${theme === 'dark' ? 'bg-[#0a0f1a] text-slate-100' : 'bg-[#f8fafc] text-slate-900'}`}>
+    <div className={`min-h-[100dvh] transition-colors ${theme === 'dark' ? 'bg-[#050505] text-slate-100' : 'bg-[#f8fafc] text-slate-900'}`}>
       
       {swUpdate && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] w-[calc(100%-2rem)] max-w-sm">
@@ -115,22 +114,22 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <header className={`${theme === 'dark' ? 'bg-[#050505]/80 border-white/5' : 'bg-white/80 border-slate-100'} backdrop-blur-md sticky top-0 z-40 border-b safe-top`}>
+      <header className={`${theme === 'dark' ? 'bg-[#111111]/80 border-white/5' : 'bg-white/80 border-slate-100'} backdrop-blur-md sticky top-0 z-40 border-b safe-top`}>
         <div className="max-w-7xl mx-auto px-4 h-16 sm:h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
-             <div className="bg-gradient-to-br from-teal-400 to-indigo-600 p-2.5 rounded-xl shadow-lg">
-                <MapPin className="text-white" size={20} />
+             <div className="bg-gradient-to-br from-teal-400 to-indigo-600 p-2 rounded-xl shadow-lg">
+                <Shield className="text-white" size={20} />
              </div>
              <div>
                 <h1 className="text-xl font-black tracking-tighter leading-none">GeoPoint</h1>
                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                   {auth.user.role === 'admin' ? 'Painel Gestor' : 'Jornada de Trabalho'}
+                   {auth.user.role === 'admin' ? 'Painel Gestor' : 'Minha Jornada'}
                 </p>
              </div>
           </div>
           <div className="flex items-center gap-2">
-             <button onClick={() => setShowSettings(true)} className="p-2.5 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl text-slate-400"><Settings size={20} /></button>
-             <button onClick={handleLogout} className="p-2.5 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl text-slate-400 hover:text-red-500"><LogOut size={20} /></button>
+             <button onClick={() => setShowSettings(true)} className="p-2.5 hover:bg-white/5 rounded-xl text-slate-400"><Settings size={20} /></button>
+             <button onClick={handleLogout} className="p-2.5 hover:bg-white/5 rounded-xl text-slate-400 hover:text-red-500"><LogOut size={20} /></button>
           </div>
         </div>
       </header>
