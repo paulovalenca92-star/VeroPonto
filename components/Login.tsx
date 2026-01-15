@@ -4,7 +4,8 @@ import { supabase, StorageService } from '../services/storage';
 import { 
   Lock, 
   Mail, 
-  Fingerprint, 
+  MapPin,
+  Clock,
   AlertCircle, 
   Loader2, 
   User as UserIcon, 
@@ -13,7 +14,8 @@ import {
   CheckCircle2,
   Building2,
   Users,
-  RefreshCw
+  RefreshCw,
+  Fingerprint
 } from 'lucide-react';
 
 interface LoginProps {
@@ -22,7 +24,7 @@ interface LoginProps {
 
 const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   const [isRegistering, setIsRegistering] = useState(false);
-  const [regType, setRegType] = useState<'manager' | 'employee'>('manager');
+  const [regType, setRegType] = useState<'manager' | 'employee'>('employee');
   const [showPassword, setShowPassword] = useState(false);
   
   const [email, setEmail] = useState('');
@@ -46,7 +48,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     if (lowerMsg.includes('already registered')) return 'Este e-mail já está cadastrado. Tente fazer login.';
     if (lowerMsg.includes('profiles_id_fkey') || lowerMsg.includes('foreign key')) {
       setIsFkeyError(true);
-      return 'O servidor ainda não processou seu acesso. Aguarde 5 segundos e clique no botão de Sincronizar abaixo.';
+      return 'O servidor ainda não processou seu acesso. Clique em Sincronizar em 5 segundos.';
     }
     return msg;
   };
@@ -74,43 +76,29 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     setIsLoading(true);
     setError(null);
     const finalWorkspaceId = regType === 'manager' 
-      ? `VERO-${Math.random().toString(36).substring(2, 7).toUpperCase()}`
+      ? `GEO-${Math.random().toString(36).substring(2, 7).toUpperCase()}`
       : workspaceId.toUpperCase().trim();
 
     try {
-      let profileSaved = false;
-      let attempts = 0;
-      const maxAttempts = 3;
+      await StorageService.saveUser({
+        id: userId,
+        email,
+        name,
+        employeeId: regType === 'manager' ? 'GESTOR' : employeeId,
+        role: regType === 'manager' ? 'admin' : 'employee',
+        workspaceId: finalWorkspaceId,
+        createdAt: Date.now()
+      });
       
-      while (!profileSaved && attempts < maxAttempts) {
-        try {
-          await StorageService.saveUser({
-            id: userId,
-            email,
-            name,
-            employeeId: regType === 'manager' ? 'GESTOR' : employeeId,
-            role: regType === 'manager' ? 'admin' : 'employee',
-            workspaceId: finalWorkspaceId,
-            createdAt: Date.now()
-          });
-          profileSaved = true;
-        } catch (profileErr: any) {
-          attempts++;
-          if (attempts >= maxAttempts) throw profileErr;
-          await new Promise(resolve => setTimeout(resolve, 2000));
-        }
-      }
-      
-      setSuccess("Cadastro concluído! Agora você já pode entrar no sistema.");
+      setSuccess("Cadastro concluído! Agora você já pode entrar.");
       setIsLoading(false);
       
-      // Reseta o formulário e volta para o login após 3 segundos
       setTimeout(() => {
         setIsRegistering(false);
         setSuccess(null);
         setPassword('');
         setConfirmPassword('');
-      }, 3500);
+      }, 3000);
 
     } catch (err: any) {
       setError(translateError(err.message));
@@ -123,10 +111,9 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     if (isLoading) return;
     setIsLoading(true);
     setError(null);
-    setIsFkeyError(false);
 
     if (password !== confirmPassword) {
-      setError("As senhas informadas não coincidem.");
+      setError("As senhas não coincidem.");
       setIsLoading(false);
       return;
     }
@@ -139,7 +126,6 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       });
 
       if (authError?.message.includes('already registered')) {
-        // Se já tem conta mas deu erro no perfil antes, tentamos logar para "resgatar"
         const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -162,31 +148,37 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0f1a] flex flex-col justify-center p-4 relative overflow-hidden">
-      <div className="absolute top-[-20%] left-[-10%] w-[70%] h-[70%] bg-indigo-600/10 blur-[120px] rounded-full"></div>
-      <div className="absolute bottom-[-20%] right-[-10%] w-[70%] h-[70%] bg-blue-600/5 blur-[120px] rounded-full"></div>
+    <div className="min-h-screen bg-[#050505] flex flex-col justify-center p-6 relative overflow-hidden">
+      {/* Background Glows */}
+      <div className="absolute top-[10%] left-[20%] w-[400px] h-[400px] bg-teal-500/10 blur-[120px] rounded-full"></div>
+      <div className="absolute bottom-[10%] right-[20%] w-[400px] h-[400px] bg-indigo-600/10 blur-[120px] rounded-full"></div>
       
-      <div className="max-w-[480px] w-full mx-auto space-y-6 relative z-10">
-        <div className="text-center space-y-3">
-          <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto shadow-2xl shadow-indigo-600/20 mb-4">
-            <Fingerprint size={36} className="text-white" />
+      <div className="max-w-[420px] w-full mx-auto space-y-10 relative z-10">
+        {/* Logo Section */}
+        <div className="text-center space-y-4">
+          <div className="flex items-center justify-center gap-4">
+            <div className="w-16 h-16 bg-gradient-to-br from-teal-400 to-indigo-600 rounded-[1.4rem] flex items-center justify-center shadow-[0_0_30px_rgba(20,184,166,0.3)]">
+               <div className="relative">
+                 <MapPin size={32} className="text-white" />
+                 <Clock size={14} className="text-white absolute bottom-[-4px] right-[-4px] bg-black rounded-full" />
+               </div>
+            </div>
+            <h1 className="text-4xl font-black text-white tracking-tighter">Geo<span className="text-indigo-400">Point</span></h1>
           </div>
-          <h1 className="text-3xl font-black text-white tracking-tighter">Vero<span className="text-indigo-500">Ponto</span></h1>
-          <p className="text-slate-500 font-bold text-[9px] uppercase tracking-[0.4em]">HR CLOUD PLATFORM</p>
         </div>
 
-        <div className="bg-white rounded-[2.5rem] shadow-2xl border border-white/5 overflow-hidden">
+        <div className="bg-[#111111] rounded-[2.5rem] shadow-2xl border border-white/5 overflow-hidden">
           {isRegistering && (
-            <div className="flex bg-slate-50 border-b">
+            <div className="flex bg-black/40 border-b border-white/5">
               <button 
                 onClick={() => setRegType('manager')}
-                className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${regType === 'manager' ? 'bg-white text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-400 opacity-50'}`}
+                className={`flex-1 py-4 text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${regType === 'manager' ? 'text-teal-400 border-b-2 border-teal-400' : 'text-slate-600'}`}
               >
-                <Building2 size={14} /> Nova Empresa
+                <Building2 size={14} /> Cadastrar Empresa
               </button>
               <button 
                 onClick={() => setRegType('employee')}
-                className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${regType === 'employee' ? 'bg-white text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-400 opacity-50'}`}
+                className={`flex-1 py-4 text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${regType === 'employee' ? 'text-teal-400 border-b-2 border-teal-400' : 'text-slate-600'}`}
               >
                 <Users size={14} /> Sou Colaborador
               </button>
@@ -195,101 +187,88 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
           <div className="p-8 sm:p-10">
             <div className="mb-8 text-center">
-              <h2 className="text-2xl font-black text-slate-800 tracking-tight">
-                {isRegistering ? (regType === 'manager' ? 'Cadastrar Empresa' : 'Criar Meu Acesso') : 'Acesso ao Sistema'}
+              <h2 className="text-xl font-black text-white tracking-tight">
+                {isRegistering ? 'Criar nova conta' : 'Bem-vindo de volta'}
               </h2>
-              <p className="text-slate-400 text-xs font-medium mt-1">
-                {isRegistering ? 'Preencha seus dados profissionais' : 'Identifique-se para registrar sua jornada'}
+              <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider mt-1">
+                {isRegistering ? 'Preencha seus dados de acesso' : 'Entre com suas credenciais para acessar'}
               </p>
             </div>
 
             <form onSubmit={isRegistering ? handleRegister : handleLogin} className="space-y-4">
               {isRegistering && (
                 <>
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Nome Completo</label>
-                    <div className="relative">
-                      <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
-                      <input required type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border-2 border-transparent rounded-2xl font-bold text-slate-800 focus:border-indigo-500 transition-all outline-none text-xs" placeholder="Nome e Sobrenome" />
-                    </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nome Completo</label>
+                    <input required type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-5 py-4 bg-[#1a1a1a] border border-white/5 rounded-2xl font-bold text-white focus:border-teal-500 transition-all outline-none text-xs" placeholder="Seu nome" />
                   </div>
                   
                   {regType === 'employee' && (
                     <div className="grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-2">
-                       <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Código Empresa</label>
-                        <input required type="text" value={workspaceId} onChange={(e) => setWorkspaceId(e.target.value.toUpperCase())} className="w-full px-4 py-3.5 bg-slate-50 border-2 border-transparent rounded-2xl font-black text-slate-800 focus:border-indigo-500 transition-all outline-none text-xs" placeholder="VERO-XXXX" />
+                       <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Cód. Empresa</label>
+                        <input required type="text" value={workspaceId} onChange={(e) => setWorkspaceId(e.target.value.toUpperCase())} className="w-full px-5 py-4 bg-[#1a1a1a] border border-white/5 rounded-2xl font-black text-white focus:border-teal-500 transition-all outline-none text-xs" placeholder="GEO-XXXX" />
                       </div>
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Matrícula</label>
-                        <input required type="text" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} className="w-full px-4 py-3.5 bg-slate-50 border-2 border-transparent rounded-2xl font-black text-slate-800 focus:border-indigo-500 transition-all outline-none text-xs" placeholder="ID-001" />
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Matrícula</label>
+                        <input required type="text" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} className="w-full px-5 py-4 bg-[#1a1a1a] border border-white/5 rounded-2xl font-black text-white focus:border-teal-500 transition-all outline-none text-xs" placeholder="001" />
                       </div>
                     </div>
                   )}
                 </>
               )}
 
-              <div className="space-y-1">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">E-mail</label>
-                <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
-                  <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border-2 border-transparent rounded-2xl font-bold text-slate-800 focus:border-indigo-500 transition-all outline-none text-xs" placeholder="seu@email.com" />
-                </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">E-mail</label>
+                <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-5 py-4 bg-[#1a1a1a] border border-white/5 rounded-2xl font-bold text-white focus:border-teal-500 transition-all outline-none text-xs" placeholder="seu@email.com" />
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Senha</label>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Senha</label>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
-                  <input required type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} className="w-full pl-11 pr-11 py-3.5 bg-slate-50 border-2 border-transparent rounded-2xl font-bold text-slate-800 focus:border-indigo-500 transition-all outline-none text-xs" placeholder="Mínimo 6 dígitos" />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-indigo-600 transition-colors">
+                  <input required type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} className="w-full px-5 py-4 bg-[#1a1a1a] border border-white/5 rounded-2xl font-bold text-white focus:border-teal-500 transition-all outline-none text-xs" placeholder="••••••••" />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600">
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
               </div>
 
               {isRegistering && (
-                <div className="space-y-1 animate-in fade-in slide-in-from-top-2">
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Confirmar Senha</label>
-                  <input required type={showPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="w-full px-4 py-3.5 bg-slate-50 border-2 border-transparent rounded-2xl font-bold text-slate-800 focus:border-indigo-500 transition-all outline-none text-xs" placeholder="Repita a senha" />
+                <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Repetir Senha</label>
+                  <input required type={showPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="w-full px-5 py-4 bg-[#1a1a1a] border border-white/5 rounded-2xl font-bold text-white focus:border-teal-500 transition-all outline-none text-xs" placeholder="••••••••" />
                 </div>
               )}
 
               {error && (
-                <div className="bg-red-50 text-red-600 p-4 rounded-2xl flex flex-col gap-3 border border-red-100 animate-in fade-in zoom-in duration-200">
+                <div className="bg-red-500/10 text-red-400 p-4 rounded-2xl flex flex-col gap-3 border border-red-500/20 animate-in shake">
                   <div className="flex items-center gap-3">
                     <AlertCircle size={18} className="shrink-0" />
                     <p className="text-[10px] font-black uppercase leading-tight">{error}</p>
                   </div>
                   {isFkeyError && retryUserId && (
-                    <button 
-                      type="button"
-                      onClick={() => trySaveProfile(retryUserId)}
-                      className="w-full py-3 bg-red-600 text-white rounded-xl font-black text-[10px] uppercase flex items-center justify-center gap-2 shadow-lg"
-                    >
-                      <RefreshCw size={14} /> Sincronizar Perfil Agora
-                    </button>
+                    <button type="button" onClick={() => trySaveProfile(retryUserId)} className="w-full py-3 bg-red-600 text-white rounded-xl font-black text-[10px] uppercase">Sincronizar Agora</button>
                   )}
                 </div>
               )}
 
               {success && (
-                <div className="bg-emerald-50 text-emerald-600 p-4 rounded-2xl flex items-center gap-3 border border-emerald-100 animate-in fade-in zoom-in">
-                  <CheckCircle2 size={18} className="shrink-0" />
-                  <p className="text-[10px] font-black uppercase leading-tight">{success}</p>
+                <div className="bg-emerald-500/10 text-emerald-400 p-4 rounded-2xl flex items-center gap-3 border border-emerald-500/20">
+                  <CheckCircle2 size={18} />
+                  <p className="text-[10px] font-black uppercase tracking-widest">{success}</p>
                 </div>
               )}
 
               <button 
                 disabled={isLoading} 
                 type="submit" 
-                className={`w-full py-5 rounded-2xl text-white font-black text-xs uppercase tracking-[0.2em] shadow-xl transition-all flex items-center justify-center gap-2 ${isLoading ? 'bg-slate-400' : 'bg-indigo-600 hover:bg-indigo-700 active:scale-95'}`}
+                className={`w-full py-5 rounded-2xl text-white font-black text-xs uppercase tracking-[0.2em] shadow-[0_10px_25px_rgba(20,184,166,0.2)] transition-all flex items-center justify-center gap-3 active:scale-95 ${isLoading ? 'bg-slate-700' : 'bg-gradient-to-r from-teal-500 to-indigo-600 hover:brightness-110'}`}
               >
-                {isLoading ? <Loader2 className="animate-spin" size={20} /> : (isRegistering ? 'Concluir Cadastro' : 'Entrar no Sistema')}
+                {isLoading ? <Loader2 className="animate-spin" size={20} /> : (isRegistering ? 'Criar Minha Conta' : 'Entrar')}
               </button>
             </form>
 
-            <div className="mt-8 pt-8 border-t border-slate-50">
+            <div className="mt-10 pt-8 border-t border-white/5 text-center">
               <button 
                 type="button"
                 onClick={() => {
@@ -299,10 +278,19 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                   setRetryUserId(null);
                   setIsFkeyError(false);
                 }} 
-                className="w-full text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-indigo-600 transition-colors"
+                className="text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-white transition-colors"
               >
-                {isRegistering ? 'Já possuo uma conta de acesso' : 'Minha empresa não tem conta? Criar agora'}
+                {isRegistering ? 'Já possuo uma conta de acesso' : 'Ainda não tem uma conta?'}
               </button>
+              
+              {!isRegistering && (
+                 <button 
+                    onClick={() => { setIsRegistering(true); setRegType('manager'); }}
+                    className="w-full mt-4 py-4 border border-white/5 rounded-2xl text-white font-black text-[10px] uppercase tracking-widest hover:bg-white/5 transition-all flex items-center justify-center gap-2"
+                 >
+                    <Building2 size={16} /> Cadastrar minha empresa
+                 </button>
+              )}
             </div>
           </div>
         </div>

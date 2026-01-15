@@ -1,3 +1,4 @@
+
 import { QRCodeCanvas } from 'qrcode.react';
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { StorageService, supabase } from '../services/storage';
@@ -280,7 +281,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isPro = true }) => {
                       <div className="flex justify-between items-start mb-6">
                          <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-indigo-50 text-indigo-600 border border-indigo-100 shadow-sm group-hover:bg-indigo-600 group-hover:text-white transition-all"><MapPin size={28} /></div>
                          <div className="flex gap-2">
-                            <button onClick={() => { setNewLoc({...loc, id: loc.id}); setSelectedCoords({lat: loc.latitude || 0, lon: loc.longitude || 0}); setShowAddLoc(true); }} className="p-3 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-2xl transition-all border border-transparent hover:border-indigo-100"><Edit2 size={20} /></button>
+                            {/* @fix: Ensured all required properties for newLoc state are provided, specifically radius which is not in the Location type */}
+                            <button onClick={() => { setNewLoc({ id: loc.id, name: loc.name, address: loc.address || '', document: loc.document || '', radius: 100 }); setSelectedCoords({lat: loc.latitude || 0, lon: loc.longitude || 0}); setShowAddLoc(true); }} className="p-3 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-2xl transition-all border border-transparent hover:border-indigo-100"><Edit2 size={20} /></button>
                             <button onClick={() => setLocationToDelete(loc)} className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all border border-transparent hover:border-red-100"><Trash2 size={20} /></button>
                          </div>
                       </div>
