@@ -1,15 +1,16 @@
 {
-  "name": "GeoPoint",
-  "short_name": "GeoPoint",
+  "name": "VeroPonto - Gestão de Ponto",
+  "short_name": "VeroPonto",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#000000",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/854/854878.png",
+      "src": "/logo.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
