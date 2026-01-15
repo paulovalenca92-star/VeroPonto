@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR" class="dark">
   <head>
@@ -13,9 +14,9 @@
     <meta name="apple-mobile-web-app-title" content="GeoPoint" />
     <meta name="mobile-web-app-capable" content="yes" />
     
-    <!-- Referências diretas para a raiz -->
     <link rel="manifest" href="manifest.json" />
-    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/fingerprint.svg" />
+    <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/512/fingerprint.png" />
+    <link rel="shortcut icon" href="https://img.icons8.com/fluency/48/fingerprint.png" />
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -50,7 +51,6 @@
       .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
       .leaflet-tile { filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7); }
       
-      /* Ocultar scrollbars mas manter funcionalidade */
       ::-webkit-scrollbar { display: none; }
       * { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
@@ -75,12 +75,11 @@
     <div id="root"></div>
     <script type="module" src="index.tsx"></script>
     <script>
-      // Registro ultra-seguro para evitar erros de URL no GitHub/Preview
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('./service-worker.js')
-            .then(() => console.log('GeoPoint: Online'))
-            .catch(() => console.log('GeoPoint: Offline mode enabled'));
+            .then(() => console.log('GeoPoint: PWA Active'))
+            .catch(() => console.log('GeoPoint: Offline mode only'));
         });
       }
     </script>

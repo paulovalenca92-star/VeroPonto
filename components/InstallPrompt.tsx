@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Download, X, Share, PlusSquare } from 'lucide-react';
+import { Download, X, Share, PlusSquare, Fingerprint } from 'lucide-react';
 
 const InstallPrompt: React.FC = () => {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -9,23 +9,22 @@ const InstallPrompt: React.FC = () => {
   const [isStandalone, setIsStandalone] = useState(false);
 
   useEffect(() => {
-    // Detectar se já está instalado (Standalone mode)
+    // Verifica se já está rodando como APP instalado
     const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches || 
                                (window.navigator as any).standalone || 
                                document.referrer.includes('android-app://');
     
     setIsStandalone(isInStandaloneMode);
 
-    // Detectar iOS
     const userAgent = window.navigator.userAgent.toLowerCase();
     const isIosDevice = /iphone|ipad|ipod/.test(userAgent);
     setIsIOS(isIosDevice);
 
-    // Handler para Android/Desktop (Chrome/Edge)
+    // Evento disparado pelo Chrome quando o app é instalável
     const handleBeforeInstallPrompt = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      // Só mostra se não estiver instalado
+      // Mostra o prompt se não estiver em standalone
       if (!isInStandaloneMode) {
         setShowPrompt(true);
       }
@@ -33,10 +32,10 @@ const InstallPrompt: React.FC = () => {
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
-    // Mostrar prompt iOS apenas se não estiver instalado
+    // No iOS, mostramos após um pequeno delay para não incomodar o usuário imediatamente
     if (isIosDevice && !isInStandaloneMode) {
-      // Pequeno delay para não ser intrusivo
-      setTimeout(() => setShowPrompt(true), 3000);
+      const timer = setTimeout(() => setShowPrompt(true), 4000);
+      return () => clearTimeout(timer);
     }
 
     return () => {
@@ -59,37 +58,39 @@ const InstallPrompt: React.FC = () => {
   if (!showPrompt || isStandalone) return null;
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 z-[1000] animate-in slide-in-from-bottom-6 duration-500">
-      <div className="bg-slate-900 text-white p-4 rounded-2xl shadow-2xl border border-white/10 flex flex-col gap-4 relative">
+    <div className="fixed bottom-6 left-6 right-6 z-[9999] animate-in slide-in-from-bottom-10 duration-700">
+      <div className="bg-[#111827] text-white p-6 rounded-[2.5rem] shadow-[0_30px_70px_rgba(0,0,0,0.9)] border border-white/10 flex flex-col gap-6 relative overflow-hidden">
+        {/* Glow de fundo */}
+        <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500/10 blur-[60px] rounded-full"></div>
+        
         <button 
           onClick={() => setShowPrompt(false)} 
-          className="absolute top-2 right-2 p-1 text-slate-400 hover:text-white transition"
+          className="absolute top-5 right-5 p-2 text-slate-500 hover:text-white transition-colors"
         >
-          <X size={16} />
+          <X size={20} />
         </button>
 
-        <div className="flex items-center gap-4 pr-6">
-          <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center shrink-0 shadow-lg">
-             {/* Ícone simplificado para o prompt */}
-             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-white"><path d="M12 12c0-3 2.5-5.5 5.5-5.5S23 9 23 12M12 12c0 3 2.5 5.5 5.5 5.5S23 14.5 23 12M12 12V2M16.5 4.5C17.5 7 19 10 19 12M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8"/></svg>
+        <div className="flex items-center gap-5 pr-8">
+          <div className="w-16 h-16 bg-gradient-to-br from-[#2DD4BF] to-[#4F46E5] rounded-[1.5rem] flex items-center justify-center shrink-0 shadow-lg shadow-teal-500/20">
+             <Fingerprint size={32} className="text-white" />
           </div>
-          <div>
-            <h4 className="font-bold text-sm">Instalar VeroPonto</h4>
-            <p className="text-xs text-slate-300 mt-0.5">Adicione à tela inicial para acesso rápido e offline.</p>
+          <div className="space-y-0.5">
+            <h4 className="font-extrabold text-lg tracking-tight">Instalar GeoPoint</h4>
+            <p className="text-xs text-slate-400 font-medium leading-relaxed">Adicione à tela inicial para acesso rápido, seguro e offline.</p>
           </div>
         </div>
 
         {isIOS ? (
-          <div className="text-xs bg-white/10 p-3 rounded-xl space-y-2">
-            <p className="flex items-center gap-2"><Share size={14} /> 1. Toque em Compartilhar</p>
-            <p className="flex items-center gap-2"><PlusSquare size={14} /> 2. Selecione "Adicionar à Tela de Início"</p>
+          <div className="text-[10px] font-black uppercase tracking-[0.15em] bg-white/5 p-5 rounded-2xl space-y-3 text-slate-300 border border-white/5">
+            <p className="flex items-center gap-3"><Share size={18} className="text-[#2DD4BF]" /> 1. Toque em "Compartilhar"</p>
+            <p className="flex items-center gap-3"><PlusSquare size={18} className="text-[#2DD4BF]" /> 2. "Adicionar à Tela de Início"</p>
           </div>
         ) : (
           <button 
             onClick={handleInstallClick}
-            className="w-full py-3 bg-white text-slate-900 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition active:scale-95 flex items-center justify-center gap-2"
+            className="w-full py-5 bg-white text-slate-950 rounded-[1.5rem] font-black text-[11px] uppercase tracking-[0.25em] hover:bg-slate-100 transition-all active:scale-[0.98] flex items-center justify-center gap-3 shadow-xl"
           >
-            <Download size={16} /> Instalar Agora
+            <Download size={20} /> INSTALAR AGORA
           </button>
         )}
       </div>

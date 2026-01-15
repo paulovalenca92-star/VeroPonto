@@ -31,7 +31,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
   const translateError = (msg: string) => {
     const lowerMsg = msg.toLowerCase();
-    if (lowerMsg.includes('security purposes')) return 'Aguarde alguns segundos.';
+    if (lowerMsg.includes('security purposes')) return 'Muitas tentativas. Aguarde.';
     if (lowerMsg.includes('invalid login credentials')) return 'E-mail ou senha incorretos.';
     return msg;
   };
@@ -89,7 +89,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
           createdAt: Date.now()
         });
         
-        setSuccess("Cadastro concluído!");
+        setSuccess("Conta criada com sucesso!");
         setTimeout(() => setIsRegistering(false), 2000);
       }
     } catch (err: any) {
@@ -100,61 +100,70 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] flex flex-col justify-center p-6 relative overflow-hidden">
-      <div className="absolute top-[10%] left-[20%] w-[400px] h-[400px] bg-teal-500/10 blur-[120px] rounded-full"></div>
-      <div className="absolute bottom-[10%] right-[20%] w-[400px] h-[400px] bg-indigo-600/10 blur-[120px] rounded-full"></div>
+    <div className="min-h-[100dvh] bg-[#050505] flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans">
+      {/* Background radial glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-indigo-500/5 via-transparent to-transparent pointer-events-none"></div>
       
-      <div className="max-w-[420px] w-full mx-auto space-y-10 relative z-10">
-        <div className="text-center space-y-4">
-          <div className="flex items-center justify-center gap-4">
-            <div className="w-16 h-16 bg-gradient-to-br from-teal-400 to-indigo-600 rounded-[1.4rem] flex items-center justify-center shadow-[0_0_40px_rgba(20,184,166,0.3)]">
-               <div className="relative">
-                 <Shield size={32} className="text-white" />
-                 <Fingerprint size={16} className="text-white absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-80" />
-               </div>
-            </div>
-            <h1 className="text-4xl font-black text-white tracking-tighter">Geo<span className="text-indigo-400">Point</span></h1>
+      <div className="w-full max-w-[400px] space-y-8 relative z-10 animate-in fade-in zoom-in-95 duration-700">
+        {/* Logo Section - Matching precisely the screenshot and professional feel */}
+        <div className="flex items-center justify-center gap-5 mb-12">
+          <div className="w-20 h-20 bg-gradient-to-br from-[#2DD4BF] to-[#4F46E5] rounded-[1.8rem] flex items-center justify-center shadow-[0_10px_30px_rgba(45,212,191,0.25)] relative overflow-hidden">
+             <Shield size={38} className="text-white fill-white/10 relative z-10" />
+             <Fingerprint size={18} className="text-white absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-60 z-20" />
           </div>
+          <h1 className="text-5xl font-black text-white tracking-tighter">GeoPoint</h1>
         </div>
 
-        <div className="bg-[#111111] rounded-[2.5rem] shadow-2xl border border-white/5 overflow-hidden">
-          {isRegistering && (
-            <div className="flex bg-black/40 border-b border-white/5">
-              <button onClick={() => setRegType('manager')} className={`flex-1 py-4 text-[9px] font-black uppercase transition-all ${regType === 'manager' ? 'text-teal-400 border-b-2 border-teal-400' : 'text-slate-600'}`}>Novo Gestor</button>
-              <button onClick={() => setRegType('employee')} className={`flex-1 py-4 text-[9px] font-black uppercase transition-all ${regType === 'employee' ? 'text-teal-400 border-b-2 border-teal-400' : 'text-slate-600'}`}>Colaborador</button>
-            </div>
-          )}
+        {/* Login Card */}
+        <div className="bg-[#121212]/90 backdrop-blur-2xl rounded-[3rem] border border-white/5 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.6)] p-8 sm:p-10 space-y-10">
+          <div className="text-center space-y-3">
+            <h2 className="text-3xl font-extrabold text-white tracking-tight">
+              {isRegistering ? 'Criar sua conta' : 'Bem-vindo de volta'}
+            </h2>
+            <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.25em] opacity-80">
+              {isRegistering ? 'PREENCHA OS DADOS ABAIXO' : 'ENTRE COM SUAS CREDENCIAIS'}
+            </p>
+          </div>
 
-          <div className="p-8 sm:p-10">
-            <form onSubmit={isRegistering ? handleRegister : handleLogin} className="space-y-4">
-              {isRegistering && (
-                <>
-                  <input required type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-5 py-4 bg-[#1a1a1a] border border-white/5 rounded-2xl font-bold text-white text-xs" placeholder="Seu Nome" />
-                  {regType === 'employee' && (
-                    <div className="grid grid-cols-2 gap-3">
-                      <input required type="text" value={workspaceId} onChange={(e) => setWorkspaceId(e.target.value.toUpperCase())} className="w-full px-5 py-4 bg-[#1a1a1a] border border-white/5 rounded-2xl font-black text-white text-xs" placeholder="GEO-XXXX" />
-                      <input required type="text" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} className="w-full px-5 py-4 bg-[#1a1a1a] border border-white/5 rounded-2xl font-black text-white text-xs" placeholder="Matrícula" />
-                    </div>
-                  )}
-                </>
-              )}
-              <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-5 py-4 bg-[#1a1a1a] border border-white/5 rounded-2xl font-bold text-white text-xs" placeholder="E-mail" />
-              <div className="relative">
-                <input required type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} className="w-full px-5 py-4 bg-[#1a1a1a] border border-white/5 rounded-2xl font-bold text-white text-xs" placeholder="Senha" />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600">{showPassword ? <EyeOff size={16} /> : <Eye size={16} />}</button>
-              </div>
-              {isRegistering && <input required type={showPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="w-full px-5 py-4 bg-[#1a1a1a] border border-white/5 rounded-2xl font-bold text-white text-xs" placeholder="Confirmar Senha" />}
-
-              {error && <div className="bg-red-500/10 text-red-400 p-4 rounded-2xl border border-red-500/20 text-[10px] font-black uppercase">{error}</div>}
-              {success && <div className="bg-emerald-500/10 text-emerald-400 p-4 rounded-2xl border border-emerald-500/20 text-[10px] font-black uppercase">{success}</div>}
-
-              <button disabled={isLoading} type="submit" className="w-full py-5 rounded-2xl text-white font-black text-xs uppercase tracking-widest shadow-xl transition-all flex items-center justify-center gap-3 bg-gradient-to-r from-teal-500 to-indigo-600">
-                {isLoading ? <Loader2 className="animate-spin" size={20} /> : (isRegistering ? 'Cadastrar' : 'Entrar')}
+          <form onSubmit={isRegistering ? handleRegister : handleLogin} className="space-y-5">
+            {isRegistering && (
+              <>
+                <div className="flex bg-black/40 rounded-2xl p-1 mb-4 border border-white/5">
+                  <button type="button" onClick={() => setRegType('manager')} className={`flex-1 py-2 text-[9px] font-black uppercase rounded-xl transition-all ${regType === 'manager' ? 'bg-white/10 text-white' : 'text-slate-600'}`}>Gestor</button>
+                  <button type="button" onClick={() => setRegType('employee')} className={`flex-1 py-2 text-[9px] font-black uppercase rounded-xl transition-all ${regType === 'employee' ? 'bg-white/10 text-white' : 'text-slate-600'}`}>Colaborador</button>
+                </div>
+                <input required type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-6 py-5 bg-[#1a1a1a] border border-white/5 rounded-2xl font-bold text-white text-sm outline-none focus:border-[#2DD4BF]/50 transition-all placeholder:text-slate-600" placeholder="Nome Completo" />
+                {regType === 'employee' && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <input required type="text" value={workspaceId} onChange={(e) => setWorkspaceId(e.target.value.toUpperCase())} className="w-full px-4 py-5 bg-[#1a1a1a] border border-white/5 rounded-2xl font-black text-white text-xs outline-none focus:border-[#2DD4BF]/50 placeholder:text-slate-700" placeholder="CÓDIGO EMPRESA" />
+                    <input required type="text" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} className="w-full px-4 py-5 bg-[#1a1a1a] border border-white/5 rounded-2xl font-black text-white text-xs outline-none focus:border-[#2DD4BF]/50 placeholder:text-slate-700" placeholder="MATRÍCULA" />
+                  </div>
+                )}
+              </>
+            )}
+            
+            <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-6 py-5 bg-[#1a1a1a] border border-white/5 rounded-2xl font-bold text-white text-sm outline-none focus:border-[#2DD4BF]/50 transition-all placeholder:text-slate-600" placeholder="seu@email.com" />
+            
+            <div className="relative">
+              <input required type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} className="w-full px-6 py-5 bg-[#1a1a1a] border border-white/5 rounded-2xl font-bold text-white text-sm outline-none focus:border-[#2DD4BF]/50 transition-all placeholder:text-slate-600" placeholder="••••••••" />
+              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-400 transition-colors">
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
-            </form>
+            </div>
 
-            <button onClick={() => setIsRegistering(!isRegistering)} className="w-full mt-8 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-white transition-colors">
-              {isRegistering ? 'Já tenho conta' : 'Criar nova conta'}
+            {isRegistering && <input required type={showPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="w-full px-6 py-5 bg-[#1a1a1a] border border-white/5 rounded-2xl font-bold text-white text-sm outline-none focus:border-[#2DD4BF]/50" placeholder="Confirme a senha" />}
+
+            {error && <div className="bg-red-500/10 text-red-500 p-4 rounded-2xl border border-red-500/20 text-[10px] font-black uppercase text-center tracking-widest">{error}</div>}
+            {success && <div className="bg-emerald-500/10 text-emerald-500 p-4 rounded-2xl border border-emerald-500/20 text-[10px] font-black uppercase text-center tracking-widest">{success}</div>}
+
+            <button disabled={isLoading} type="submit" className="w-full py-5 bg-gradient-to-r from-[#2DD4BF] to-[#4F46E5] rounded-[1.8rem] text-white font-black text-xs uppercase tracking-[0.25em] shadow-xl shadow-[#2DD4BF]/10 active:scale-[0.98] transition-all flex items-center justify-center gap-3">
+              {isLoading ? <Loader2 className="animate-spin" size={20} /> : (isRegistering ? 'CADASTRAR AGORA' : 'ENTRAR')}
+            </button>
+          </form>
+
+          <div className="pt-2 text-center">
+            <button onClick={() => { setIsRegistering(!isRegistering); setError(null); }} className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] hover:text-white transition-colors">
+              {isRegistering ? 'JÁ TEM UMA CONTA? CLIQUE AQUI' : 'AINDA NÃO TEM CONTA? CLIQUE AQUI'}
             </button>
           </div>
         </div>
