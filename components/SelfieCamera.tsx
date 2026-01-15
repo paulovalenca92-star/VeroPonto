@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Camera, X, Check, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 
@@ -18,7 +19,7 @@ const SelfieCamera: React.FC<SelfieCameraProps> = ({ onCapture, onCancel }) => {
     setIsInitializing(true);
     setError(null);
     
-    // Pequeno delay de 500ms para garantir que a WebView processe a permissão de hardware
+    // Pequeno delay para garantir que a WebView processe a permissão de hardware
     await new Promise(resolve => setTimeout(resolve, 500));
 
     try {
@@ -26,12 +27,11 @@ const SelfieCamera: React.FC<SelfieCameraProps> = ({ onCapture, onCancel }) => {
         throw new Error("Câmera não suportada ou permissão ausente.");
       }
 
-      // Resolução 480p (640x480) é a mais estável para WebViews em APKs (WebIntoApp)
       const constraints = { 
         video: { 
           facingMode: 'user', 
-          width: { ideal: 640 }, 
-          height: { ideal: 480 } 
+          width: { ideal: 1280 }, // Aumentando a resolução ideal para melhor qualidade
+          height: { ideal: 720 } 
         }, 
         audio: false 
       };
@@ -40,23 +40,20 @@ const SelfieCamera: React.FC<SelfieCameraProps> = ({ onCapture, onCancel }) => {
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        
-        // Atributos forçados programaticamente para garantir funcionamento no Android WebView
         videoRef.current.setAttribute('autoplay', 'true');
         videoRef.current.setAttribute('muted', 'true');
         videoRef.current.setAttribute('playsinline', 'true');
         
         try {
-          // Garante que o vídeo comece a rodar
           await videoRef.current.play();
         } catch (e) {
-          console.warn("Auto-play interrompido pela WebView, tentando novamente...", e);
+          console.warn("Auto-play interrompido pela WebView", e);
         }
       }
       setIsInitializing(false);
     } catch (err: any) {
       console.error("Erro Câmera APK:", err);
-      const msg = err.name === 'NotAllowedError' ? "Permissão negada. Ative a câmera nas configurações do Android." : "Erro ao carregar hardware da câmera.";
+      const msg = err.name === 'NotAllowedError' ? "Permissão negada. Ative a câmera nas configurações." : "Erro ao carregar hardware da câmera.";
       setError(msg);
       setIsInitializing(false);
     }
@@ -74,10 +71,21 @@ const SelfieCamera: React.FC<SelfieCameraProps> = ({ onCapture, onCancel }) => {
 
   const takePhoto = () => {
     if (videoRef.current && canvasRef.current) {
-      const context = canvasRef.current.getContext('2d');
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const context = canvas.getContext('2d');
+      
       if (context) {
-        context.drawImage(videoRef.current, 0, 0, 640, 480);
-        const dataUrl = canvasRef.current.toDataURL('image/jpeg', 0.8);
+        // Ajustamos o canvas para as dimensões REAIS que o vídeo está entregando
+        // Isso evita que a foto fique esticada/espremida (larga)
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        
+        // Desenha o frame atual do vídeo no canvas
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // Converte para base64 com boa qualidade
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
         setCapturedImg(dataUrl);
         setIsPhotoTaken(true);
       }
@@ -117,8 +125,10 @@ const SelfieCamera: React.FC<SelfieCameraProps> = ({ onCapture, onCancel }) => {
           </div>
         )}
         
-        <div className="absolute inset-0 border-[4px] border-indigo-500/40 rounded-full z-10 animate-pulse"></div>
-        <div className="w-full h-full rounded-full overflow-hidden bg-slate-900 shadow-2xl relative border-4 border-white/5">
+        {/* Guia Circular */}
+        <div className="absolute inset-0 border-[4px] border-indigo-500/40 rounded-full z-10 animate-pulse pointer-events-none"></div>
+        
+        <div className="w-full h-full rounded-full overflow-hidden bg-slate-900 shadow-2xl relative border-4 border-white/10">
           {!isPhotoTaken ? (
             <video 
               ref={videoRef} 
@@ -131,9 +141,14 @@ const SelfieCamera: React.FC<SelfieCameraProps> = ({ onCapture, onCancel }) => {
               className="w-full h-full object-cover scale-x-[-1]"
             />
           ) : (
-            <img src={capturedImg!} className="w-full h-full object-cover scale-x-[-1]" />
+            <img 
+              src={capturedImg!} 
+              className="w-full h-full object-cover scale-x-[-1]" 
+              alt="Preview"
+            />
           )}
-          <canvas ref={canvasRef} width="640" height="480" className="hidden" />
+          {/* Canvas invisível para processamento */}
+          <canvas ref={canvasRef} className="hidden" />
         </div>
       </div>
 
