@@ -1,16 +1,21 @@
 
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
-export default defineConfig({
-  plugins: [react()],
-  build: {
-    outDir: 'dist',
-    sourcemap: false,
-    minify: 'esbuild'
-  },
-  define: {
-    // Permite que o Vite use a variável definida no painel da Netlify durante o build
-    'process.env.API_KEY': JSON.stringify(process.env.API_KEY || 'AIzaSyD8fnNyRH7t5BKw6g4d7UxoMVho2HM66gY')
-  }
+export default defineConfig(({ mode }) => {
+  // Carrega variáveis do arquivo .env e do sistema
+  const env = loadEnv(mode, process.cwd(), '');
+  
+  return {
+    plugins: [react()],
+    build: {
+      outDir: 'dist',
+      sourcemap: false,
+      minify: 'esbuild'
+    },
+    define: {
+      // Mapeia a API_KEY para que o código frontend consiga acessá-la via process.env.API_KEY
+      'process.env.API_KEY': JSON.stringify(env.API_KEY || process.env.API_KEY)
+    }
+  };
 });
