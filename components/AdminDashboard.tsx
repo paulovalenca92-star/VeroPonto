@@ -215,7 +215,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isPro = true }) => {
           { id: 'users', label: 'Equipe', icon: <Users size={12}/> }, 
           { id: 'locations', label: 'Unidades', icon: <MapPin size={12}/> }
         ].map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex-1 min-w-[130px] py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${activeTab === tab.id ? 'bg-indigo-600 text-white shadow-xl scale-105' : 'text-slate-400 hover:bg-slate-50'}`}>
+            <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex-1 min-w-[130px] py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${activeTab === tab.id ? 'bg-indigo-600 text-white shadow-xl scale-105' : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5'}`}>
                 {tab.icon} {tab.label}
             </button>
         ))}
@@ -228,10 +228,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isPro = true }) => {
              <p className="text-slate-400 text-xs font-medium">Os colaboradores criam seus próprios acessos usando o código da empresa. Você pode gerenciar os dados de perfil abaixo.</p>
           </div>
           <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-white/5 overflow-hidden">
-             <div className="p-4 border-b border-slate-50 flex items-center gap-4">
+             <div className="p-4 border-b border-slate-50 dark:border-white/5 flex items-center gap-4">
                 <div className="relative flex-1 max-w-sm">
                    <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
-                   <input type="text" placeholder="Pesquisar membro..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-11 pr-4 py-3 bg-slate-50 border-none rounded-xl text-xs font-bold outline-none" />
+                   <input type="text" placeholder="Pesquisar membro..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-800 rounded-xl text-xs font-bold outline-none dark:text-white" />
                 </div>
              </div>
              <div className="overflow-x-auto">
@@ -249,15 +249,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isPro = true }) => {
                      <tr key={u.id} className="hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors group">
                        <td className="px-8 py-5">
                          <div className="flex items-center gap-4">
-                           <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-black text-[12px]">{u.name.substring(0, 2).toUpperCase()}</div>
+                           <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black text-[12px]">{u.name.substring(0, 2).toUpperCase()}</div>
                            <div><p className="font-black text-sm text-slate-800 dark:text-white">{u.name}</p><p className="text-[10px] text-slate-400 font-bold">{u.email}</p></div>
                          </div>
                        </td>
                        <td className="px-8 py-5 text-[11px] font-black text-slate-500 tabular-nums">{u.employeeId}</td>
-                       <td className="px-8 py-5"><span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase ${u.role === 'admin' ? 'bg-amber-50 text-amber-600' : 'bg-slate-100 text-slate-500'}`}>{u.role === 'admin' ? 'Gestor' : 'Funcionário'}</span></td>
+                       <td className="px-8 py-5"><span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase ${u.role === 'admin' ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>{u.role === 'admin' ? 'Gestor' : 'Funcionário'}</span></td>
                        <td className="px-8 py-5 text-right space-x-2">
-                         <button onClick={() => { setEditUserForm({id: u.id, name: u.name, employeeId: u.employeeId, role: u.role, email: u.email}); setShowEditUser(true); }} className="p-2.5 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"><Edit2 size={18} /></button>
-                         <button onClick={() => setUserToDelete(u)} className="p-2.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={18} /></button>
+                         <button onClick={() => { setEditUserForm({id: u.id, name: u.name, employeeId: u.employeeId, role: u.role, email: u.email}); setShowEditUser(true); }} className="p-2.5 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 rounded-xl transition-all"><Edit2 size={18} /></button>
+                         <button onClick={() => setUserToDelete(u)} className="p-2.5 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/20 rounded-xl transition-all"><Trash2 size={18} /></button>
                        </td>
                      </tr>
                    ))}
@@ -279,11 +279,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isPro = true }) => {
                  <div key={loc.id} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/10 rounded-[3rem] p-8 shadow-sm hover:shadow-2xl transition-all flex flex-col justify-between group">
                     <div className="relative">
                       <div className="flex justify-between items-start mb-6">
-                         <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-indigo-50 text-indigo-600 border border-indigo-100 shadow-sm group-hover:bg-indigo-600 group-hover:text-white transition-all"><MapPin size={28} /></div>
+                         <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-500/20 shadow-sm group-hover:bg-indigo-600 group-hover:text-white transition-all"><MapPin size={28} /></div>
                          <div className="flex gap-2">
-                            {/* @fix: Ensured all required properties for newLoc state are provided, specifically radius which is not in the Location type */}
-                            <button onClick={() => { setNewLoc({ id: loc.id, name: loc.name, address: loc.address || '', document: loc.document || '', radius: 100 }); setSelectedCoords({lat: loc.latitude || 0, lon: loc.longitude || 0}); setShowAddLoc(true); }} className="p-3 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-2xl transition-all border border-transparent hover:border-indigo-100"><Edit2 size={20} /></button>
-                            <button onClick={() => setLocationToDelete(loc)} className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all border border-transparent hover:border-red-100"><Trash2 size={20} /></button>
+                            <button onClick={() => { setNewLoc({ id: loc.id, name: loc.name, address: loc.address || '', document: loc.document || '', radius: 100 }); setSelectedCoords({lat: loc.latitude || 0, lon: loc.longitude || 0}); setShowAddLoc(true); }} className="p-3 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 rounded-2xl transition-all border border-transparent hover:border-indigo-100"><Edit2 size={20} /></button>
+                            <button onClick={() => setLocationToDelete(loc)} className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/20 rounded-2xl transition-all border border-transparent hover:border-red-100"><Trash2 size={20} /></button>
                          </div>
                       </div>
                       <h4 className="font-black text-slate-800 dark:text-white text-xl mb-1 truncate">{loc.name}</h4>
@@ -301,12 +300,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isPro = true }) => {
 
       {activeTab === 'records' && (
          <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-white/5 overflow-hidden">
-            <div className="p-5 border-b border-slate-50 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="p-5 border-b border-slate-50 dark:border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
                <div className="relative max-w-sm w-full">
                  <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
-                 <input type="text" placeholder="Filtrar histórico..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-800 rounded-xl text-xs font-bold outline-none" />
+                 <input type="text" placeholder="Filtrar histórico..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-800 rounded-xl text-xs font-bold outline-none dark:text-white" />
                </div>
-               <button onClick={() => StorageService.exportToCSV(records)} className="px-6 py-3.5 bg-slate-100 dark:bg-white/10 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-indigo-50 hover:text-indigo-600 transition-all"><Download size={16} /> Exportar CSV</button>
+               <button onClick={() => StorageService.exportToCSV(records)} className="px-6 py-3.5 bg-slate-100 dark:bg-white/10 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-indigo-50 dark:hover:bg-indigo-500/20 hover:text-indigo-600 transition-all"><Download size={16} /> Exportar CSV</button>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left">
@@ -322,9 +321,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isPro = true }) => {
                 <tbody className="divide-y divide-slate-50 dark:divide-white/5">
                   {filteredRecords.map(record => (
                     <tr key={record.id} className="hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors">
-                      <td className="px-8 py-5"><p className="font-black text-sm">{record.userName}</p><p className="text-[10px] text-slate-400 uppercase tracking-wide">ID: {record.employeeId}</p></td>
-                      <td className="px-8 py-5"><span className={`px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider ${record.type === 'entry' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>{record.type === 'entry' ? 'Entrada' : 'Saída'}</span></td>
-                      <td className="px-8 py-5"><p className="text-sm font-black tabular-nums">{new Date(record.timestamp).toLocaleTimeString('pt-BR')}</p><p className="text-[10px] text-slate-400 font-bold">{new Date(record.timestamp).toLocaleDateString('pt-BR')}</p></td>
+                      <td className="px-8 py-5"><p className="font-black text-sm text-slate-800 dark:text-white">{record.userName}</p><p className="text-[10px] text-slate-400 uppercase tracking-wide">ID: {record.employeeId}</p></td>
+                      <td className="px-8 py-5"><span className={`px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider ${record.type === 'entry' ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>{record.type === 'entry' ? 'Entrada' : 'Saída'}</span></td>
+                      <td className="px-8 py-5"><p className="text-sm font-black tabular-nums text-slate-800 dark:text-white">{new Date(record.timestamp).toLocaleTimeString('pt-BR')}</p><p className="text-[10px] text-slate-400 font-bold">{new Date(record.timestamp).toLocaleDateString('pt-BR')}</p></td>
                       <td className="px-8 py-5"><p className="text-[10px] font-bold text-slate-400 truncate max-w-[120px]">{record.locationName.split('(')[0]}</p></td>
                       <td className="px-8 py-5 text-right"><button onClick={() => setSelectedRecord(record)} className="p-2.5 text-slate-400 hover:text-indigo-600 transition-colors"><Plus size={20} /></button></td>
                     </tr>
@@ -356,18 +355,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isPro = true }) => {
               <form onSubmit={handleAddLocation} className="space-y-6">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Identificação / Apelido</label>
-                  <input required value={newLoc.name} onChange={e => setNewLoc({...newLoc, name: e.target.value})} className="w-full p-4.5 bg-slate-50 dark:bg-white/5 border border-slate-100 rounded-2xl font-black text-xs outline-none" placeholder="Ex: Sede Central" />
+                  <input required value={newLoc.name} onChange={e => setNewLoc({...newLoc, name: e.target.value})} className="w-full p-4.5 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl font-black text-xs outline-none dark:text-white dark:placeholder:text-slate-600" placeholder="Ex: Sede Central" />
                 </div>
                 <div className="space-y-1.5 relative">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Endereço Completo</label>
                   <div className="relative">
-                    <input required value={newLoc.address} onChange={e => { setSelectedCoords(null); setNewLoc({...newLoc, address: e.target.value}); }} className="w-full p-4.5 bg-slate-50 dark:bg-white/5 border border-slate-100 rounded-2xl font-black text-xs outline-none" placeholder="Pesquisar rua, nº, cidade..." />
+                    <input required value={newLoc.address} onChange={e => { setSelectedCoords(null); setNewLoc({...newLoc, address: e.target.value}); }} className="w-full p-4.5 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl font-black text-xs outline-none dark:text-white dark:placeholder:text-slate-600" placeholder="Pesquisar rua, nº, cidade..." />
                     {isSearchingAddress && <Loader2 size={16} className="absolute right-4 top-1/2 -translate-y-1/2 animate-spin text-indigo-500" />}
                   </div>
                   {addressSuggestions.length > 0 && (
                     <div className="absolute top-full left-0 right-0 z-[100] mt-2 bg-white dark:bg-slate-800 border rounded-2xl overflow-hidden shadow-2xl">
                       {addressSuggestions.map((s, i) => (
-                        <button key={i} type="button" onClick={() => handleSelectSuggestion(s)} className="w-full p-4 text-left text-[10px] font-bold border-b last:border-none hover:bg-slate-50">
+                        <button key={i} type="button" onClick={() => handleSelectSuggestion(s)} className="w-full p-4 text-left text-[10px] font-bold border-b last:border-none hover:bg-slate-50 dark:hover:bg-white/5 dark:text-white">
                           {s.display_name}
                         </button>
                       ))}
@@ -376,7 +375,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isPro = true }) => {
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Documento (Opcional)</label>
-                  <input value={newLoc.document} onChange={e => setNewLoc({...newLoc, document: e.target.value})} className="w-full p-4.5 bg-slate-50 dark:bg-white/5 border border-slate-100 rounded-2xl font-black text-xs outline-none" placeholder="CNPJ ou Identificação" />
+                  <input value={newLoc.document} onChange={e => setNewLoc({...newLoc, document: e.target.value})} className="w-full p-4.5 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl font-black text-xs outline-none dark:text-white dark:placeholder:text-slate-600" placeholder="CNPJ ou Identificação" />
                 </div>
                 <button disabled={isSubmitting || !newLoc.name.trim()} type="submit" className="w-full py-5 rounded-[1.5rem] font-black text-xs uppercase tracking-[0.3em] bg-indigo-600 text-white shadow-xl hover:scale-[1.02] active:scale-95 transition-all">
                   {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : 'Salvar Unidade'}
@@ -396,21 +395,21 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isPro = true }) => {
               </div>
               <form onSubmit={handleUpdateUserProfile} className="space-y-6">
                 <div className="space-y-1.5">
-                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nome Completo</label>
-                   <input required value={editUserForm.name} onChange={e => setEditUserForm({...editUserForm, name: e.target.value})} className="w-full p-4.5 bg-slate-50 dark:bg-white/5 border border-slate-100 rounded-2xl font-black text-xs outline-none focus:border-indigo-600 transition-all" placeholder="Nome completo" />
+                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 dark:text-slate-500">Nome Completo</label>
+                   <input required value={editUserForm.name} onChange={e => setEditUserForm({...editUserForm, name: e.target.value})} className="w-full p-4.5 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl font-black text-xs outline-none focus:border-indigo-600 dark:text-white transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700" placeholder="Nome completo" />
                 </div>
                 <div className="space-y-1.5 opacity-50">
-                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">E-mail (Não editável pelo gestor)</label>
-                   <input disabled value={editUserForm.email} className="w-full p-4.5 bg-slate-50 rounded-2xl font-bold text-xs cursor-not-allowed" />
+                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 dark:text-slate-500">E-mail (Não editável)</label>
+                   <input disabled value={editUserForm.email} className="w-full p-4.5 bg-slate-50 dark:bg-white/5 rounded-2xl font-bold text-xs cursor-not-allowed dark:text-white/50" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Matrícula</label>
-                    <input required value={editUserForm.employeeId} onChange={e => setEditUserForm({...editUserForm, employeeId: e.target.value})} className="w-full p-4.5 bg-slate-50 rounded-2xl font-black text-xs outline-none" placeholder="Ex: 001" />
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 dark:text-slate-500">Matrícula</label>
+                    <input required value={editUserForm.employeeId} onChange={e => setEditUserForm({...editUserForm, employeeId: e.target.value})} className="w-full p-4.5 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl font-black text-xs outline-none dark:text-white" placeholder="Ex: 001" />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Cargo</label>
-                    <select value={editUserForm.role} onChange={e => setEditUserForm({...editUserForm, role: e.target.value as any})} className="w-full p-4.5 bg-slate-50 rounded-2xl font-black text-[10px] uppercase tracking-widest outline-none">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 dark:text-slate-500">Cargo</label>
+                    <select value={editUserForm.role} onChange={e => setEditUserForm({...editUserForm, role: e.target.value as any})} className="w-full p-4.5 bg-slate-50 dark:bg-[#121212] border border-slate-100 dark:border-white/10 rounded-2xl font-black text-[10px] uppercase tracking-widest outline-none dark:text-white">
                       <option value="employee">Funcionário</option>
                       <option value="admin">Gestor</option>
                     </select>
@@ -448,13 +447,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isPro = true }) => {
       {locationToDelete && (
         <div className="fixed inset-0 z-[7000] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
            <div className="bg-white dark:bg-slate-900 rounded-[3rem] p-10 max-w-sm w-full text-center space-y-8 shadow-2xl">
-              <div className="w-20 h-20 bg-red-50 text-red-500 rounded-3xl flex items-center justify-center mx-auto shadow-inner"><AlertOctagon size={48} /></div>
+              <div className="w-20 h-20 bg-red-50 dark:bg-red-500/10 text-red-500 rounded-3xl flex items-center justify-center mx-auto shadow-inner"><AlertOctagon size={48} /></div>
               <div>
                 <h4 className="text-2xl font-black text-slate-800 dark:text-white tracking-tighter">Excluir Unidade?</h4>
                 <p className="text-slate-400 text-xs font-medium mt-2 leading-relaxed">Isso desativará o QR Code permanentemente.</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                 <button onClick={() => setLocationToDelete(null)} className="py-4.5 bg-slate-100 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all">Manter</button>
+                 <button onClick={() => setLocationToDelete(null)} className="py-4.5 bg-slate-100 dark:bg-white/5 dark:text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all">Manter</button>
                  <button onClick={async () => { setIsDeleting(true); await StorageService.deleteLocation(locationToDelete.id); setLocationToDelete(null); setIsDeleting(false); loadData(); }} className="py-4.5 bg-red-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl hover:bg-red-700 active:scale-95 transition-all">Excluir</button>
               </div>
            </div>
@@ -464,13 +463,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isPro = true }) => {
       {userToDelete && (
         <div className="fixed inset-0 z-[7000] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
            <div className="bg-white dark:bg-slate-900 rounded-[3rem] p-10 max-w-sm w-full text-center space-y-8 shadow-2xl">
-              <div className="w-20 h-20 bg-red-50 text-red-500 rounded-3xl flex items-center justify-center mx-auto shadow-inner"><Trash2 size={40} /></div>
+              <div className="w-20 h-20 bg-red-50 dark:bg-red-500/10 text-red-500 rounded-3xl flex items-center justify-center mx-auto shadow-inner"><Trash2 size={40} /></div>
               <div>
                 <h4 className="text-2xl font-black text-slate-800 dark:text-white tracking-tighter">Remover Membro?</h4>
                 <p className="text-slate-400 text-xs font-medium mt-2 leading-relaxed">O colaborador perderá o acesso ao sistema da empresa.</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                 <button onClick={() => setUserToDelete(null)} className="py-4.5 bg-slate-100 rounded-2xl font-black text-[10px] uppercase tracking-widest">Cancelar</button>
+                 <button onClick={() => setUserToDelete(null)} className="py-4.5 bg-slate-100 dark:bg-white/5 dark:text-white rounded-2xl font-black text-[10px] uppercase tracking-widest">Cancelar</button>
                  <button onClick={async () => { setIsDeleting(true); await StorageService.deleteUser(userToDelete.id); setUserToDelete(null); setIsDeleting(false); loadData(); }} className="py-4.5 bg-red-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all">Revogar</button>
               </div>
            </div>
