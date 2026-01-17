@@ -1,9 +1,11 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { User, TimeRecord, PunchType, Location } from '../types';
 import { StorageService } from '../services/storage';
 import SelfieCamera from './SelfieCamera';
 import Scanner from './Scanner';
 import RecordDetailsModal from './RecordDetailsModal';
+import MonthlyReport from './MonthlyReport';
 import { 
   History, 
   ArrowUpCircle, 
@@ -18,7 +20,8 @@ import {
   ShieldCheck,
   User as UserIcon,
   Fingerprint,
-  RefreshCw
+  RefreshCw,
+  FileText
 } from 'lucide-react';
 
 interface EmployeeDashboardProps {
@@ -41,6 +44,7 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user, isPro }) =>
   const [records, setRecords] = useState<TimeRecord[]>([]);
   const [isScanning, setIsScanning] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [showReport, setShowReport] = useState(false);
   const [activeLocation, setActiveLocation] = useState<Location | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(true);
@@ -68,7 +72,6 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user, isPro }) =>
     loadUserRecords();
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     
-    // Sincronização de foco para APK/WebView
     const handleFocus = () => loadUserRecords(true);
     window.addEventListener('focus', handleFocus);
     window.addEventListener('visibilitychange', () => {
@@ -204,24 +207,23 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user, isPro }) =>
   return (
     <div className="max-w-md mx-auto flex flex-col gap-6 animate-in fade-in duration-500 pb-24">
       
-      {/* Overlay Bloqueante de Registro */}
       {isProcessing && (
         <div className="fixed inset-0 z-[9999] bg-black/40 backdrop-blur-sm flex items-center justify-center">
           <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-2xl flex flex-col items-center gap-4">
-            <Loader2 size={40} className="text-indigo-600 animate-spin" />
+            <Loader2 size={40} className="text-[#2DD4BF] animate-spin" />
             <p className="text-xs font-black uppercase tracking-widest dark:text-white text-slate-800">Validando Jornada...</p>
           </div>
         </div>
       )}
 
-      <div className={`bg-white dark:bg-slate-900 rounded-[3rem] p-8 shadow-sm border border-slate-100 dark:border-white/5 text-center relative overflow-hidden transition-all ${isPro ? 'ring-2 ring-amber-500/20' : ''}`}>
-        <div className={`absolute top-0 left-0 right-0 h-1 ${isPro ? 'bg-gradient-to-r from-amber-400 via-orange-500 to-amber-400' : 'bg-indigo-600'}`}></div>
+      <div className="bg-white dark:bg-slate-900 rounded-[3rem] p-8 shadow-sm border border-slate-100 dark:border-white/5 text-center relative overflow-hidden transition-all ring-2 ring-[#2DD4BF]/10">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#2DD4BF] to-[#4F46E5]"></div>
         
         <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mb-1 mt-2">Olá, {user.name.split(' ')[0]}</p>
         <h2 className="text-5xl font-black text-slate-800 dark:text-white tabular-nums tracking-tighter">
           {currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
         </h2>
-        <p className={`${isPro ? 'text-amber-500' : 'text-indigo-500'} font-bold mt-1 text-[10px] uppercase tracking-widest`}>
+        <p className="text-[#2DD4BF] font-bold mt-1 text-[10px] uppercase tracking-widest">
           {currentTime.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'short' })}
         </p>
 
@@ -254,13 +256,21 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user, isPro }) =>
         <button 
           disabled={isProcessing}
           onClick={handleStartQRScan}
-          className={`group w-full py-6 rounded-[2rem] font-black shadow-xl transition-all flex items-center justify-between px-8 active:scale-95 disabled:opacity-50 ${isPro ? 'bg-gradient-to-br from-amber-500 to-orange-600 text-white' : 'bg-slate-900 text-white'}`}
+          className="group w-full py-6 bg-gradient-to-r from-[#2DD4BF] to-[#4F46E5] text-white rounded-[2rem] font-black shadow-xl transition-all flex items-center justify-between px-8 active:scale-95 disabled:opacity-50"
         >
           <div className="flex flex-col items-start gap-1">
             <span className="tracking-widest uppercase text-xs">Escanear Unidade</span>
             <span className="text-[9px] text-white/50 font-bold uppercase tracking-wider">Validar Presença Local</span>
           </div>
           {isProcessing ? <Loader2 size={20} className="animate-spin" /> : <QrCode size={20} />}
+        </button>
+
+        <button 
+          onClick={() => setShowReport(true)}
+          className="group w-full py-5 bg-white dark:bg-slate-900 border border-[#2DD4BF]/20 text-[#2DD4BF] rounded-[2rem] font-black shadow-sm transition-all flex items-center justify-center gap-3 px-8 hover:bg-[#2DD4BF]/5 active:scale-95"
+        >
+          <FileText size={18} />
+          <span className="tracking-widest uppercase text-[10px]">Gerar Relatório Assinado</span>
         </button>
       </div>
 
@@ -280,7 +290,7 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user, isPro }) =>
           <h3 className="font-black text-slate-400 text-[10px] uppercase tracking-widest flex items-center gap-2">
             <History size={12} /> Últimos Registros
           </h3>
-          {loadingHistory && <Loader2 size={12} className="animate-spin text-indigo-500" />}
+          {loadingHistory && <Loader2 size={12} className="animate-spin text-[#2DD4BF]" />}
         </div>
         
         <div className="divide-y divide-slate-50 dark:divide-white/5">
@@ -335,7 +345,15 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ user, isPro }) =>
         <RecordDetailsModal 
           record={selectedRecord} 
           onClose={() => setSelectedRecord(null)} 
-          isPro={isPro}
+          isPro={true}
+        />
+      )}
+
+      {showReport && (
+        <MonthlyReport 
+          user={user}
+          records={records}
+          onClose={() => setShowReport(false)}
         />
       )}
     </div>
