@@ -57,14 +57,20 @@ const AIChat: React.FC<AIChatProps> = ({ user, isPro }) => {
     setIsTyping(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      // @fix: Initialize ai directly with the required parameter name.
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
-      const result = await ai.models.generateContentStream({
-        model: 'gemini-3-flash-preview',
-        contents: updatedHistory.map(m => ({ 
+      // @fix: Ensure contents sent to Gemini starts with a 'user' turn (filter out leading model greetings).
+      const chatContents = updatedHistory
+        .filter((m, i) => !(i === 0 && m.role === 'model'))
+        .map(m => ({ 
           role: m.role, 
           parts: [{ text: m.text }] 
-        })),
+        }));
+
+      const result = await ai.models.generateContentStream({
+        model: 'gemini-3-flash-preview',
+        contents: chatContents,
         config: {
           systemInstruction: `Você é a "${ASSISTANT_NAME}", uma assistente virtual inteligente, amigável e prestativa do sistema de ponto GeoPoint.
           Seu objetivo é ajudar funcionários e gestores.
@@ -83,6 +89,7 @@ const AIChat: React.FC<AIChatProps> = ({ user, isPro }) => {
       let fullText = "";
       
       for await (const chunk of result) {
+        // @fix: text is a property, not a method.
         const chunkText = chunk.text;
         if (chunkText) {
           fullText += chunkText;
