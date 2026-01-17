@@ -16,7 +16,8 @@ import {
   AlertTriangle,
   Printer,
   Calendar,
-  Zap
+  Zap,
+  Shield
 } from 'lucide-react';
 
 interface RecordDetailsModalProps {
@@ -44,8 +45,9 @@ const RecordDetailsModal: React.FC<RecordDetailsModalProps> = ({ record, onClose
         {/* Cabeçalho Superior Estilizado */}
         <div className="p-8 border-b border-white/5 flex justify-between items-center bg-white/5 no-print">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-[#2DD4BF] to-[#4F46E5] rounded-2xl flex items-center justify-center shadow-lg shadow-teal-500/20">
-              <Fingerprint size={24} className="text-white" />
+            <div className="w-12 h-12 bg-gradient-to-br from-[#2DD4BF] to-[#4F46E5] rounded-2xl flex items-center justify-center shadow-lg shadow-teal-500/20 relative overflow-hidden">
+              <Shield size={24} className="text-white fill-white/10 relative z-10" />
+              <Fingerprint size={12} className="text-white absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-60 z-20" />
             </div>
             <div>
               <h3 className="font-black text-[10px] uppercase tracking-[0.3em] text-slate-500">Comprovante Digital</h3>

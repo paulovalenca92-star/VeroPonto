@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Download, X, Share, PlusSquare, Fingerprint } from 'lucide-react';
+import { Download, X, Share, PlusSquare, Fingerprint, Shield } from 'lucide-react';
 
 const InstallPrompt: React.FC = () => {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -71,8 +71,9 @@ const InstallPrompt: React.FC = () => {
         </button>
 
         <div className="flex items-center gap-5 pr-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-[#2DD4BF] to-[#4F46E5] rounded-[1.5rem] flex items-center justify-center shrink-0 shadow-lg shadow-teal-500/20">
-             <Fingerprint size={32} className="text-white" />
+          <div className="w-16 h-16 bg-gradient-to-br from-[#2DD4BF] to-[#4F46E5] rounded-[1.5rem] flex items-center justify-center shrink-0 shadow-lg shadow-teal-500/20 relative overflow-hidden">
+             <Shield size={30} className="text-white fill-white/10 relative z-10" />
+             <Fingerprint size={14} className="text-white absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-60 z-20" />
           </div>
           <div className="space-y-0.5">
             <h4 className="font-extrabold text-lg tracking-tight">Instalar GeoPoint</h4>
