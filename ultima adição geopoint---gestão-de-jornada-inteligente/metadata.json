@@ -1,0 +1,8 @@
+{
+  "name": "GeoPoint - Gestão de Jornada Inteligente",
+  "description": "Sistema profissional de controle de ponto com verificação por selfie e geolocalização em tempo real.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}
